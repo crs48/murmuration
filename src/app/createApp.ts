@@ -2,6 +2,7 @@ import { cloneSettings, clampSettings } from "./settings";
 import { exportSettings, importSettings } from "./presetSerialization";
 import { CpuMurmurationSimulation } from "../simulation/CpuMurmurationSimulation";
 import { gridSimulationLimit } from "../simulation/CpuMurmurationSimulation";
+import { WebglGpuMurmurationSimulation } from "../simulation/WebglGpuMurmurationSimulation";
 import { createCameraRig } from "../camera/createCameraRig";
 import { createPane, coercePaneSettings } from "../controls/createPane";
 import { createFrameStatsTracker } from "../diagnostics/frameStats";
@@ -11,6 +12,7 @@ import {
 } from "../diagnostics/adaptiveQuality";
 import { createCapabilityReport } from "../diagnostics/capabilityReport";
 import { ParticleCloud } from "../rendering/ParticleCloud";
+import { GpuParticleCloud } from "../rendering/GpuParticleCloud";
 import { createRendererRig } from "../rendering/createRenderer";
 import { TrailLines } from "../rendering/TrailLines";
 import { AccumulationPass, isAccumulationEnabled } from "../rendering/accumulation";
@@ -56,6 +58,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     seed: 29,
   });
   const particles = new ParticleCloud(settings);
+  const gpuParticles = new GpuParticleCloud(settings);
   const trails = new TrailLines(settings);
   const accumulation = new AccumulationPass();
   const stats = createFrameStatsTracker();
@@ -77,7 +80,9 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   let lastNow = performance.now();
   let lastHudUpdate = 0;
 
-  rendererRig.scene.add(trails.lines, particles.points);
+  const gpuSimulation = new WebglGpuMurmurationSimulation(rendererRig.renderer);
+
+  rendererRig.scene.add(trails.lines, particles.points, gpuParticles.points);
 
   const updateTheme = (): void => {
     const theme = themeByName(settings.theme);
@@ -85,6 +90,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       ? null
       : theme.paper;
     particles.setTheme(theme.ink, theme.paper);
+    gpuParticles.setTheme(theme.ink, theme.paper);
     trails.setTheme(theme.ink);
     document.documentElement.style.setProperty("--panel-bg", theme.panel);
     document.documentElement.style.setProperty("--panel-text", theme.panelText);
@@ -99,7 +105,10 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   const updateHud = (): void => {
     const { fps, averageFrameMs } = stats.snapshot();
     const simulationLabel =
-      settings.simulationMode !== "cpu" && settings.count > gridSimulationLimit
+      settings.simulationMode === "webgl-gpgpu" &&
+      capability.webglGpgpu.isSupported
+        ? "webgl-gpgpu"
+        : settings.simulationMode !== "cpu" && settings.count > gridSimulationLimit
         ? "cpu-field"
         : "cpu-grid";
     hud.innerHTML = `
@@ -108,6 +117,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       <span>${averageFrameMs.toFixed(1)} ms</span>
       <span>${simulationLabel}</span>
       <span>${capability.rendererBackend}</span>
+      <span>${capability.webglGpgpu.isSupported ? "gpgpu ready" : "gpgpu unavailable"}</span>
       <span>${capability.webgpuAvailable ? "webgpu ready" : "webgpu unavailable"}</span>
     `;
   };
@@ -135,14 +145,38 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     resize();
     updateTheme();
     cameraRig.controls.update();
-    const buffers = simulation.step({
-      dt,
-      time: now / 1000,
+    const threatPosition = deriveThreatPosition(
       settings,
-      threatPosition: deriveThreatPosition(settings, now / 1000, pointerThreat),
-    });
-    trails.update(buffers, settings);
-    particles.update(buffers, settings, rendererRig.pixelRatio());
+      now / 1000,
+      pointerThreat,
+    );
+    const useWebglGpgpu =
+      settings.simulationMode === "webgl-gpgpu" &&
+      capability.webglGpgpu.isSupported;
+
+    if (useWebglGpgpu) {
+      const gpuState = gpuSimulation.step({
+        dt,
+        time: now / 1000,
+        settings,
+        threatPosition,
+      });
+      gpuParticles.update(gpuState, settings, rendererRig.pixelRatio());
+      gpuParticles.points.visible = true;
+      particles.points.visible = false;
+      trails.lines.visible = false;
+    } else {
+      const buffers = simulation.step({
+        dt,
+        time: now / 1000,
+        settings,
+        threatPosition,
+      });
+      trails.update(buffers, settings);
+      particles.update(buffers, settings, rendererRig.pixelRatio());
+      particles.points.visible = true;
+      gpuParticles.points.visible = false;
+    }
     accumulation.begin(
       rendererRig.renderer,
       themeByName(settings.theme).paper,
@@ -186,11 +220,13 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       sceneHost.removeEventListener("pointerleave", clearPointerThreat);
       pane.dispose();
       particles.dispose();
+      gpuParticles.dispose();
       trails.dispose();
       accumulation.dispose();
       cameraRig.dispose();
       rendererRig.dispose();
       simulation.dispose();
+      gpuSimulation.dispose();
       root.replaceChildren();
     },
   };

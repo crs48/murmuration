@@ -595,7 +595,7 @@ gantt
 - [x] Add velocity-stretched particle tails.
 - [x] Add screen-space accumulation trail mode as an optional visual effect.
 - [x] Add adaptive quality controls for pixel ratio, particle count, and trail mode.
-- [ ] Port simulation to WebGL2 GPGPU with ping-pong position and velocity textures.
+- [x] Port simulation to WebGL2 GPGPU with ping-pong position and velocity textures.
 - [ ] Add WebGPU compute adapter after WebGL GPGPU behavior is stable.
 - [x] Add diagnostics: FPS, frame time, particle count, backend, pixel ratio, and GPU capability report.
 - [x] Add preset import/export if the control surface becomes a design tool.
@@ -609,7 +609,7 @@ gantt
 - [ ] Verify all presets produce visually distinct motion.
 - [ ] Verify count changes recreate or resize buffers without leaking memory.
 - [x] Verify CPU fallback remains usable at reduced particle counts.
-- [ ] Verify WebGL GPGPU backend supports required float texture capabilities before enabling it.
+- [x] Verify WebGL GPGPU backend supports required float texture capabilities before enabling it.
 - [ ] Verify WebGPU backend fails gracefully when `navigator.gpu` is unavailable.
 - [ ] Measure FPS at 1,000, 5,000, 10,000, 25,000, 50,000, and 100,000 particles.
 - [ ] Keep 10,000 particles near 60 FPS on a modern desktop browser.
