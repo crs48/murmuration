@@ -6,6 +6,8 @@ export type EnvironmentUpdateInput = Readonly<{
   center: Vec3;
   settings: MurmurationSettings;
   pixelRatio: number;
+  time: number;
+  wake: number;
 }>;
 
 export type EnvironmentAdapter = Readonly<{

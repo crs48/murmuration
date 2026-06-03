@@ -243,6 +243,11 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       center: pilot.corePosition,
       settings,
       pixelRatio: rendererRig.pixelRatio(),
+      time: now / 1000,
+      wake: Math.min(
+        1,
+        pilot.mediumPulse + Math.hypot(...pilot.coreVelocity) * 0.32,
+      ),
     });
 
     if (simulationBackend === "webgpu" && webgpuLayer) {

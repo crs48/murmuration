@@ -3,7 +3,7 @@ export type RenderMode = "points" | "impostor-quads" | "instanced-spheres";
 export type ThreatMode = "off" | "cursor" | "orbit" | "autonomous";
 export type SimulationMode = "auto" | "cpu" | "webgl-gpgpu" | "webgpu";
 export type TrailMode = "velocity" | "accumulation" | "off";
-export type MediumMode = "off" | "grid";
+export type MediumMode = "off" | "grid" | "dust" | "air" | "starlight";
 
 export type MurmurationSettings = Readonly<{
   count: number;
@@ -36,6 +36,10 @@ export type MurmurationSettings = Readonly<{
   depthFade: number;
   trailMode: TrailMode;
   mediumMode: MediumMode;
+  mediumIntensity: number;
+  mediumTurbulence: number;
+  mediumWake: number;
+  mediumPointScale: number;
   trailLength: number;
   trailOpacity: number;
   theme: ThemeName;
@@ -80,6 +84,10 @@ export const defaultSettings: MurmurationSettings = {
   depthFade: 0.42,
   trailMode: "off",
   mediumMode: "grid",
+  mediumIntensity: 1,
+  mediumTurbulence: 0.25,
+  mediumWake: 0.5,
+  mediumPointScale: 1,
   trailLength: 0.34,
   trailOpacity: 0.08,
   theme: "ink",
@@ -152,6 +160,10 @@ export const clampSettings = (
   particleOpacity: Math.min(1, Math.max(0, settings.particleOpacity)),
   depthScale: Math.min(2, Math.max(0, settings.depthScale)),
   depthFade: Math.min(1, Math.max(0, settings.depthFade)),
+  mediumIntensity: Math.min(1, Math.max(0, settings.mediumIntensity)),
+  mediumTurbulence: Math.min(1, Math.max(0, settings.mediumTurbulence)),
+  mediumWake: Math.min(1, Math.max(0, settings.mediumWake)),
+  mediumPointScale: Math.min(2, Math.max(0.2, settings.mediumPointScale)),
   trailLength: Math.min(2, Math.max(0, settings.trailLength)),
   trailOpacity: Math.min(1, Math.max(0, settings.trailOpacity)),
   targetFps: Math.min(120, Math.max(24, Math.round(settings.targetFps))),

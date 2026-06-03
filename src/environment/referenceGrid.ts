@@ -9,6 +9,7 @@ import {
 import type { MurmurationSettings } from "../app/settings";
 import { mulberry32 } from "../math/random";
 import type { Vec3 } from "../math/vec3";
+import { mediumPresetByMode } from "./mediumPresets";
 import type { EnvironmentAdapter, EnvironmentUpdateInput } from "./types";
 
 const gridX = 25;
@@ -20,16 +21,34 @@ const count = gridX * gridY * gridZ;
 
 const vertexShader = `
 attribute float referenceAlpha;
+attribute float seed;
 
 uniform float uPixelRatio;
 uniform float uPointScale;
+uniform float uTime;
+uniform float uTurbulence;
+uniform float uDrift;
+uniform float uWake;
 
 varying float vAlpha;
 
 void main() {
-  vec4 modelViewPosition = modelViewMatrix * vec4(position, 1.0);
+  vec3 drift = vec3(
+    sin(seed * 19.7 + uTime * 0.7),
+    cos(seed * 17.3 + uTime * 0.55),
+    sin(seed * 13.1 - uTime * 0.8)
+  ) * uTurbulence * 0.045;
+  drift.z += sin(uTime * 0.21 + seed * 7.0) * uDrift * 0.06;
+  drift += vec3(
+    sin(uTime * 2.1 + seed * 23.0),
+    cos(uTime * 1.7 + seed * 29.0),
+    sin(uTime * 1.4 + seed * 31.0)
+  ) * uWake * 0.055;
+
+  vec3 worldPosition = position + drift;
+  vec4 modelViewPosition = modelViewMatrix * vec4(worldPosition, 1.0);
   float depth = max(0.4, -modelViewPosition.z);
-  float distanceFade = 1.0 - smoothstep(3.2, 6.8, length(position));
+  float distanceFade = 1.0 - smoothstep(3.2, 6.8, length(worldPosition));
   vAlpha = referenceAlpha * distanceFade;
   gl_Position = projectionMatrix * modelViewPosition;
   gl_PointSize = clamp(uPointScale * uPixelRatio * (10.0 / depth), 0.8, 5.5);
@@ -42,6 +61,7 @@ precision highp float;
 uniform vec3 uInk;
 uniform vec3 uPaper;
 uniform float uOpacity;
+uniform float uColorMix;
 
 varying float vAlpha;
 
@@ -54,7 +74,7 @@ void main() {
   }
 
   float dotAlpha = (1.0 - smoothstep(0.42, 1.0, r2)) * vAlpha * uOpacity;
-  vec3 color = mix(uPaper, uInk, 0.55);
+  vec3 color = mix(uPaper, uInk, uColorMix);
 
   gl_FragColor = vec4(color, dotAlpha);
 }
@@ -83,6 +103,8 @@ export class ReferenceGrid implements EnvironmentAdapter {
 
   private readonly alphas = new Float32Array(count);
 
+  private readonly seeds = new Float32Array(count);
+
   private lastAnchor: Vec3 | null = null;
 
   public constructor(settings: MurmurationSettings) {
@@ -93,9 +115,14 @@ export class ReferenceGrid implements EnvironmentAdapter {
       uniforms: {
         uInk: { value: null },
         uPaper: { value: null },
-        uOpacity: { value: settings.mediumMode === "grid" ? 0.34 : 0 },
+        uOpacity: { value: 0 },
         uPixelRatio: { value: Math.min(window.devicePixelRatio, settings.pixelRatioCap) },
         uPointScale: { value: 1 },
+        uTime: { value: 0 },
+        uTurbulence: { value: 0 },
+        uDrift: { value: 0 },
+        uWake: { value: 0 },
+        uColorMix: { value: 0.55 },
       },
       vertexShader,
       fragmentShader,
@@ -108,6 +135,10 @@ export class ReferenceGrid implements EnvironmentAdapter {
       "referenceAlpha",
       new BufferAttribute(this.alphas, 1),
     );
+    this.geometry.setAttribute(
+      "seed",
+      new BufferAttribute(this.seeds, 1),
+    );
     this.points = new Points(this.geometry, this.material);
     this.points.frustumCulled = false;
     this.rebuild([0, 0, 0]);
@@ -117,11 +148,22 @@ export class ReferenceGrid implements EnvironmentAdapter {
     center,
     settings,
     pixelRatio,
+    time,
+    wake,
   }: EnvironmentUpdateInput): void => {
-    this.points.visible = settings.mediumMode === "grid";
+    const preset = mediumPresetByMode(settings.mediumMode);
+    this.points.visible = settings.mediumMode !== "off";
     this.material.uniforms.uOpacity.value =
-      settings.mediumMode === "grid" ? 0.34 : 0;
+      preset.opacity * settings.mediumIntensity;
     this.material.uniforms.uPixelRatio.value = pixelRatio;
+    this.material.uniforms.uPointScale.value =
+      settings.mediumPointScale * preset.pointScale;
+    this.material.uniforms.uTime.value = time;
+    this.material.uniforms.uTurbulence.value =
+      settings.mediumTurbulence * preset.turbulence;
+    this.material.uniforms.uDrift.value = preset.drift;
+    this.material.uniforms.uWake.value = settings.mediumWake * wake;
+    this.material.uniforms.uColorMix.value = preset.colorMix;
 
     if (!this.points.visible) {
       return;
@@ -173,6 +215,7 @@ export class ReferenceGrid implements EnvironmentAdapter {
           this.positions[offset + 1] = cy * spacing + jitter(random);
           this.positions[offset + 2] = cz * spacing + jitter(random);
           this.alphas[index] = 0.32 + (1 - normalizedY) * 0.38 + random() * 0.18;
+          this.seeds[index] = random();
           index += 1;
         }
       }
@@ -180,6 +223,7 @@ export class ReferenceGrid implements EnvironmentAdapter {
 
     this.geometry.getAttribute("position").needsUpdate = true;
     this.geometry.getAttribute("referenceAlpha").needsUpdate = true;
+    this.geometry.getAttribute("seed").needsUpdate = true;
     this.geometry.setDrawRange(0, count);
   };
 }

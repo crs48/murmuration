@@ -76,9 +76,16 @@ export const createPane = (
     label: "Medium",
     options: {
       Grid: "grid",
+      Dust: "dust",
+      Air: "air",
+      Starlight: "starlight",
       Off: "off",
     },
   });
+  visual.addBinding(settings, "mediumIntensity", { min: 0, max: 1, step: 0.01 });
+  visual.addBinding(settings, "mediumTurbulence", { min: 0, max: 1, step: 0.01 });
+  visual.addBinding(settings, "mediumWake", { min: 0, max: 1, step: 0.01 });
+  visual.addBinding(settings, "mediumPointScale", { min: 0.2, max: 2, step: 0.01 });
   visual.addBinding(settings, "trailMode", {
     options: {
       Velocity: "velocity",

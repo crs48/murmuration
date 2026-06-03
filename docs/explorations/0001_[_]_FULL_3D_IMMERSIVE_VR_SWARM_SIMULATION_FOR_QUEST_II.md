@@ -700,8 +700,8 @@ Goal:
 - [ ] Remove per-frame allocations from the CPU simulation path or isolate CPU simulation to low-count debug mode.
 - [x] Add `EnvironmentAdapter` and `ReferenceGrid` modules.
 - [x] Add wrapped fixed dot lattice rendering as the first spatial reference mode.
-- [ ] Add low-cost dust, air, and starlight medium presets.
-- [ ] Add medium parameters for drag, turbulence, wake response, point size, opacity, and color/theme behavior.
+- [x] Add low-cost dust, air, and starlight medium presets.
+- [x] Add medium parameters for drag, turbulence, wake response, point size, opacity, and color/theme behavior.
 - [x] Add adaptive Quest 2 quality caps for particle counts, render scale, and medium complexity.
 - [ ] Prototype WebGL2 GPGPU ping-pong textures for position/velocity updates.
 - [ ] Keep WebGPU exploration behind capability flags and outside the critical Quest 2 path until WebXR/WebGPU binding support is proven on device.
