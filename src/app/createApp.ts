@@ -28,6 +28,7 @@ import {
   deriveThreatPosition,
   type PointerThreat,
 } from "../simulation/threat";
+import { createXrControllerRig } from "../xr/createXrControllerRig";
 import { createXrSessionButton } from "../xr/createXrSessionButton";
 
 export type MurmurationApp = Readonly<{
@@ -73,6 +74,10 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   const adaptiveQuality = createAdaptiveQualityState();
   const capability = createCapabilityReport(rendererRig.renderer);
   const xrSessionButton = createXrSessionButton(rendererRig.renderer, host);
+  const xrControllerRig = createXrControllerRig(
+    rendererRig.renderer,
+    rendererRig.scene,
+  );
   const pointerThreat: PointerThreat = {
     active: false,
     position: [0, 0, 0],
@@ -302,6 +307,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       trails.dispose();
       accumulation.dispose();
       xrSessionButton.dispose();
+      xrControllerRig.dispose();
       cameraRig.dispose();
       rendererRig.dispose();
       simulation.dispose();

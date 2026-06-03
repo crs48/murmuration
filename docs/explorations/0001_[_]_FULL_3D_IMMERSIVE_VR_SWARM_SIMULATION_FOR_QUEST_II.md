@@ -691,10 +691,10 @@ Goal:
 - [x] Enable `renderer.xr.enabled`, configure XR reference space, framebuffer scale, and foveation before session start.
 - [x] Add a VR entry button through Three.js `VRButton` or a custom equivalent.
 - [ ] Split desktop `OrbitControls` from immersive `XrCameraRig`.
-- [ ] Add `SwarmPilotIntent` as the semantic input contract.
-- [ ] Add an `XRControllerInputAdapter` that reads WebXR input sources and `gamepad` state.
+- [x] Add `SwarmPilotIntent` as the semantic input contract.
+- [x] Add an `XRControllerInputAdapter` that reads WebXR input sources and `gamepad` state.
 - [ ] Add desktop fallback input that emits the same `SwarmPilotIntent`.
-- [ ] Add `SwarmPilotRig` with core position, velocity, heading, radius, roll, and comfort limits.
+- [x] Add `SwarmPilotRig` with core position, velocity, heading, radius, roll, and comfort limits.
 - [ ] Extend `SimulationStepInput` with a pilot/swarm-core field instead of passing only `threatPosition`.
 - [ ] Add pilot-aware force terms in `rules.ts`.
 - [ ] Remove per-frame allocations from the CPU simulation path or isolate CPU simulation to low-count debug mode.
