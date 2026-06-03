@@ -54,6 +54,8 @@ uniform float uCohesion;
 uniform float uNoise;
 uniform float uFlow;
 uniform float uChaseStrength;
+uniform float uAttractorSpeed;
+uniform float uAttractorRadius;
 uniform float uWanderRadius;
 uniform float uWanderSpeed;
 uniform float uThreatEnabled;
@@ -78,13 +80,20 @@ float cyclicWeight(float value, float center) {
 }
 
 vec3 flockWanderCenter(float time) {
-  float t = time * uWanderSpeed;
-
-  return uWanderRadius * vec3(
-    sin(t * 0.37) * 0.62 + sin(t * 0.91 + 1.4) * 0.22,
-    sin(t * 0.43 + 0.8) * 0.38 + cos(t * 0.77 + 2.2) * 0.16,
-    cos(t * 0.31 + 0.5) * 0.34 + sin(t * 0.69 + 2.2) * 0.18
+  float t = time * uAttractorSpeed * uWanderSpeed;
+  vec3 travel = vec3(
+    sin(t * 0.31 + sin(t * 0.17) * 0.8) * 0.68 +
+      sin(t * 0.83 + 1.4) * 0.24 +
+      sin(t * 0.11 + 2.8) * 0.08,
+    sin(t * 0.37 + 0.8) * 0.62 +
+      cos(t * 0.73 + 2.2) * 0.26 +
+      sin(t * 0.19 + 0.5) * 0.12,
+    cos(t * 0.29 + 0.5) * 0.64 +
+      sin(t * 0.67 + 2.2) * 0.26 +
+      cos(t * 0.13 + 1.1) * 0.1
   );
+
+  return uAttractorRadius * uWanderRadius * vec3(travel.x, travel.y * 0.58, travel.z * 0.86);
 }
 
 vec3 leaderAnchor(vec3 center, float time, float groupSeed) {
@@ -317,6 +326,8 @@ export class WebglGpuMurmurationSimulation {
       uNoise: { value: 0 },
       uFlow: { value: 0 },
       uChaseStrength: { value: 0 },
+      uAttractorSpeed: { value: 0 },
+      uAttractorRadius: { value: 0 },
       uWanderRadius: { value: 0 },
       uWanderSpeed: { value: 0 },
       uThreatEnabled: { value: 0 },
@@ -456,6 +467,8 @@ export class WebglGpuMurmurationSimulation {
     this.velocityMaterial.uniforms.uNoise.value = input.settings.noise;
     this.velocityMaterial.uniforms.uFlow.value = input.settings.flow;
     this.velocityMaterial.uniforms.uChaseStrength.value = input.settings.chaseStrength;
+    this.velocityMaterial.uniforms.uAttractorSpeed.value = input.settings.attractorSpeed;
+    this.velocityMaterial.uniforms.uAttractorRadius.value = input.settings.attractorRadius;
     this.velocityMaterial.uniforms.uWanderRadius.value = input.settings.wanderRadius;
     this.velocityMaterial.uniforms.uWanderSpeed.value = input.settings.wanderSpeed;
     this.velocityMaterial.uniforms.uThreatEnabled.value = input.threatPosition ? 1 : 0;

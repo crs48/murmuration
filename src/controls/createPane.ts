@@ -54,8 +54,10 @@ export const createPane = (
   simulation.addBinding(settings, "noise", { min: 0, max: 1, step: 0.01 });
   simulation.addBinding(settings, "flow", { min: 0, max: 2, step: 0.01 });
   simulation.addBinding(settings, "chaseStrength", { min: 0, max: 1, step: 0.01 });
-  simulation.addBinding(settings, "wanderRadius", { min: 0, max: 1, step: 0.01 });
-  simulation.addBinding(settings, "wanderSpeed", { min: 0.05, max: 2, step: 0.01 });
+
+  const attractor = pane.addFolder({ title: "Attractor" });
+  attractor.addBinding(settings, "attractorSpeed", { min: 0.05, max: 3, step: 0.01 });
+  attractor.addBinding(settings, "attractorRadius", { min: 0, max: 2.4, step: 0.01 });
 
   const visual = pane.addFolder({ title: "Visual" });
   visual.addBinding(settings, "theme", {

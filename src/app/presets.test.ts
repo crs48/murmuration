@@ -25,6 +25,18 @@ describe("presets", () => {
     ).toBe(true);
   });
 
+  it("keeps every preset attractor path controllable", () => {
+    expect(
+      presets.every(
+        ({ settings }) =>
+          settings.attractorRadius >= 0 &&
+          settings.attractorRadius <= 2.4 &&
+          settings.attractorSpeed >= 0.05 &&
+          settings.attractorSpeed <= 3,
+      ),
+    ).toBe(true);
+  });
+
   it("retrieves presets by name", () => {
     expect(presetByName("Predator Ripple").settings.threatMode).toBe("orbit");
   });

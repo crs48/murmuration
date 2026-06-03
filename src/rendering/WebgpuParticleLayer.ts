@@ -9,7 +9,7 @@ import type { SimulationStepInput } from "../simulation/types";
 
 const workgroupSize = 128;
 const particleStrideBytes = 16;
-const simUniformFloats = 24;
+const simUniformFloats = 28;
 const renderUniformFloats = 40;
 
 const velocityShader = `
@@ -20,6 +20,7 @@ struct SimUniforms {
   threat: vec4<f32>,
   params3: vec4<f32>,
   params4: vec4<f32>,
+  params5: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: SimUniforms;
@@ -38,14 +39,27 @@ fn cyclicWeight(value: f32, center: f32) -> f32 {
   return weight * weight;
 }
 
-fn flockWanderCenter(time: f32, radius: f32, speed: f32) -> vec3<f32> {
-  let t = time * speed;
-
-  return radius * vec3<f32>(
-    sin(t * 0.37) * 0.62 + sin(t * 0.91 + 1.4) * 0.22,
-    sin(t * 0.43 + 0.8) * 0.38 + cos(t * 0.77 + 2.2) * 0.16,
-    cos(t * 0.31 + 0.5) * 0.34 + sin(t * 0.69 + 2.2) * 0.18
+fn flockWanderCenter(
+  time: f32,
+  radius: f32,
+  legacySpeed: f32,
+  attractorSpeed: f32,
+  attractorRadius: f32
+) -> vec3<f32> {
+  let t = time * attractorSpeed * legacySpeed;
+  let travel = vec3<f32>(
+    sin(t * 0.31 + sin(t * 0.17) * 0.8) * 0.68 +
+      sin(t * 0.83 + 1.4) * 0.24 +
+      sin(t * 0.11 + 2.8) * 0.08,
+    sin(t * 0.37 + 0.8) * 0.62 +
+      cos(t * 0.73 + 2.2) * 0.26 +
+      sin(t * 0.19 + 0.5) * 0.12,
+    cos(t * 0.29 + 0.5) * 0.64 +
+      sin(t * 0.67 + 2.2) * 0.26 +
+      cos(t * 0.13 + 1.1) * 0.1
   );
+
+  return attractorRadius * radius * vec3<f32>(travel.x, travel.y * 0.58, travel.z * 0.86);
 }
 
 fn leaderAnchor(center: vec3<f32>, time: f32, groupSeed: f32) -> vec3<f32> {
@@ -89,7 +103,15 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
   let wanderRadius = u.params4.x;
   let wanderSpeed = u.params4.y;
   let chaseStrength = u.params4.z;
-  let flockCenter = flockWanderCenter(time, wanderRadius, wanderSpeed);
+  let attractorSpeed = u.params4.w;
+  let attractorRadius = u.params5.x;
+  let flockCenter = flockWanderCenter(
+    time,
+    wanderRadius,
+    wanderSpeed,
+    attractorSpeed,
+    attractorRadius
+  );
   let fromCenter = pos - flockCenter;
   let dist = max(0.0001, length(fromCenter));
   let radial = fromCenter / dist;
@@ -753,6 +775,8 @@ export class WebgpuParticleLayer {
     this.simUniforms[20] = settings.wanderRadius;
     this.simUniforms[21] = settings.wanderSpeed;
     this.simUniforms[22] = settings.chaseStrength;
+    this.simUniforms[23] = settings.attractorSpeed;
+    this.simUniforms[24] = settings.attractorRadius;
     this.device.queue.writeBuffer(this.simUniformBuffer, 0, this.simUniforms);
   };
 
