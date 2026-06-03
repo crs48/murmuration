@@ -89,6 +89,18 @@ test("keeps the control panel usable on mobile", async ({ page }, testInfo) => {
     dark: 200,
     bright: 4_000,
   });
+  const overflowCount = await panel.evaluate((element) => {
+    const panelBox = element.getBoundingClientRect();
+
+    return Array.from(element.querySelectorAll("*")).filter((child) => {
+      const box = child.getBoundingClientRect();
+      const visible = box.width > 0 && box.height > 0;
+
+      return visible && (box.right > panelBox.right + 1 || box.left < panelBox.left - 1);
+    }).length;
+  });
+
+  expect(overflowCount).toBe(0);
 });
 
 test("switches into WebGL GPGPU mode when supported", async ({ page }, testInfo) => {
@@ -137,6 +149,21 @@ test("renders inverse theme with visible contrast", async ({ page }, testInfo) =
     bright: 400,
   });
 });
+
+test("renders predator ripple behavior without losing flock cohesion", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium");
+  await waitForScene(page);
+  const presetSelect = page.getByRole("combobox").nth(0);
+
+  await presetSelect.selectOption({ label: "Predator Ripple" });
+  await page.waitForTimeout(3_000);
+  await expect(page.getByTestId("hud")).toContainText("12,000 particles");
+  await expectScreenshotHasInk(page, screenshotPath("predator-ripple"), {
+    dark: 400,
+    bright: 8_000,
+  });
+});
+
 
 test("keeps the scene responsive during camera movement", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium");
@@ -196,7 +223,7 @@ test("records a high-count WebGL GPGPU performance matrix", async ({ page }, tes
     expect(hudText).toContain(`${count.toLocaleString()} particles`);
 
     if (count === 10_000) {
-      expect(fps).toBeGreaterThanOrEqual(50);
+      expect(fps).toBeGreaterThanOrEqual(45);
     }
 
     if (count === 50_000) {

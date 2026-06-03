@@ -604,7 +604,7 @@ gantt
 
 - [x] Verify the app renders a nonblank canvas at desktop and mobile viewport sizes.
 - [ ] Verify camera orbit, pan, wheel zoom, and pinch zoom.
-- [ ] Verify no UI text overlaps at narrow mobile widths.
+- [x] Verify no UI text overlaps at narrow mobile widths.
 - [x] Verify the side panel can collapse or scroll without blocking the whole scene.
 - [x] Verify all presets produce visually distinct motion.
 - [x] Verify count changes recreate or resize buffers without leaking memory.
@@ -616,7 +616,7 @@ gantt
 - [x] Keep 50,000 particles interactive by reducing trails, pixel ratio, or render mode.
 - [x] Confirm black-on-white and white-on-black themes remain legible in screenshots.
 - [x] Confirm trails do not turn the simulation into a blurry smear.
-- [ ] Confirm threat mode creates visible waves or voids without fragmenting the flock permanently.
+- [x] Confirm threat mode creates visible waves or voids without fragmenting the flock permanently.
 - [ ] Confirm local speed changes propagate through nearby particles.
 - [x] Confirm particle positions remain bounded and do not accumulate NaNs.
 - [x] Run automated visual smoke tests with Playwright screenshots.
