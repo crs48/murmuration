@@ -72,6 +72,13 @@ export const createPane = (
   visual.addBinding(settings, "particleOpacity", { min: 0, max: 1, step: 0.01 });
   visual.addBinding(settings, "depthScale", { min: 0, max: 2, step: 0.01 });
   visual.addBinding(settings, "depthFade", { min: 0, max: 1, step: 0.01 });
+  visual.addBinding(settings, "mediumMode", {
+    label: "Medium",
+    options: {
+      Grid: "grid",
+      Off: "off",
+    },
+  });
   visual.addBinding(settings, "trailMode", {
     options: {
       Velocity: "velocity",

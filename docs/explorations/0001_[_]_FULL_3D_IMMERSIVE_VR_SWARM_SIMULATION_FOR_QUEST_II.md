@@ -698,8 +698,8 @@ Goal:
 - [ ] Extend `SimulationStepInput` with a pilot/swarm-core field instead of passing only `threatPosition`.
 - [ ] Add pilot-aware force terms in `rules.ts`.
 - [ ] Remove per-frame allocations from the CPU simulation path or isolate CPU simulation to low-count debug mode.
-- [ ] Add `EnvironmentAdapter` and `ReferenceGrid` modules.
-- [ ] Add wrapped fixed dot lattice rendering as the first spatial reference mode.
+- [x] Add `EnvironmentAdapter` and `ReferenceGrid` modules.
+- [x] Add wrapped fixed dot lattice rendering as the first spatial reference mode.
 - [ ] Add low-cost dust, air, and starlight medium presets.
 - [ ] Add medium parameters for drag, turbulence, wake response, point size, opacity, and color/theme behavior.
 - [ ] Add adaptive Quest 2 quality caps for particle counts, render scale, and medium complexity.

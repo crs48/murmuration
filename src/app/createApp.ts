@@ -17,6 +17,7 @@ import {
   createAdaptiveQualityState,
 } from "../diagnostics/adaptiveQuality";
 import { createCapabilityReport } from "../diagnostics/capabilityReport";
+import { ReferenceGrid } from "../environment/referenceGrid";
 import { ParticleCloud } from "../rendering/ParticleCloud";
 import { GpuParticleCloud } from "../rendering/GpuParticleCloud";
 import { WebgpuParticleLayer } from "../rendering/WebgpuParticleLayer";
@@ -69,6 +70,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   const particles = new ParticleCloud(settings);
   const gpuParticles = new GpuParticleCloud(settings);
   const trails = new TrailLines(settings);
+  const referenceGrid = new ReferenceGrid(settings);
   const accumulation = new AccumulationPass();
   const stats = createFrameStatsTracker();
   const adaptiveQuality = createAdaptiveQualityState();
@@ -109,7 +111,12 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
 
   const gpuSimulation = new WebglGpuMurmurationSimulation(rendererRig.renderer);
 
-  rendererRig.scene.add(trails.lines, particles.points, gpuParticles.points);
+  rendererRig.scene.add(
+    referenceGrid.points,
+    trails.lines,
+    particles.points,
+    gpuParticles.points,
+  );
   window.__murmuration = debugApi;
   if (capability.webgpuAvailable) {
     void WebgpuParticleLayer.create(sceneHost)
@@ -136,6 +143,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     particles.setTheme(theme.ink, theme.paper);
     gpuParticles.setTheme(theme.ink, theme.paper);
     trails.setTheme(theme.ink);
+    referenceGrid.setTheme(theme.ink, theme.paper);
     document.documentElement.style.setProperty("--panel-bg", theme.panel);
     document.documentElement.style.setProperty("--panel-text", theme.panelText);
   };
@@ -207,6 +215,11 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       capability,
       webgpuStatus,
     );
+    referenceGrid.update({
+      center: [0, 0, 0],
+      settings,
+      pixelRatio: rendererRig.pixelRatio(),
+    });
 
     if (simulationBackend === "webgpu" && webgpuLayer) {
       const theme = themeByName(settings.theme);
@@ -305,6 +318,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       gpuParticles.dispose();
       webgpuLayer?.dispose();
       trails.dispose();
+      referenceGrid.dispose();
       accumulation.dispose();
       xrSessionButton.dispose();
       xrControllerRig.dispose();

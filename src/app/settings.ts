@@ -3,6 +3,7 @@ export type RenderMode = "points" | "impostor-quads" | "instanced-spheres";
 export type ThreatMode = "off" | "cursor" | "orbit" | "autonomous";
 export type SimulationMode = "auto" | "cpu" | "webgl-gpgpu" | "webgpu";
 export type TrailMode = "velocity" | "accumulation" | "off";
+export type MediumMode = "off" | "grid";
 
 export type MurmurationSettings = Readonly<{
   count: number;
@@ -34,6 +35,7 @@ export type MurmurationSettings = Readonly<{
   depthScale: number;
   depthFade: number;
   trailMode: TrailMode;
+  mediumMode: MediumMode;
   trailLength: number;
   trailOpacity: number;
   theme: ThemeName;
@@ -77,6 +79,7 @@ export const defaultSettings: MurmurationSettings = {
   depthScale: 1,
   depthFade: 0.42,
   trailMode: "off",
+  mediumMode: "grid",
   trailLength: 0.34,
   trailOpacity: 0.08,
   theme: "ink",
