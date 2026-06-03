@@ -96,6 +96,23 @@ test("switches into WebGL GPGPU mode when supported", async ({ page }, testInfo)
   }
 });
 
+test("falls back gracefully when WebGPU is unavailable", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium");
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, "gpu", {
+      configurable: true,
+      get: () => undefined,
+    });
+  });
+  await waitForScene(page);
+  await expect(page.getByTestId("hud")).toContainText("webgpu unavailable");
+
+  const modeSelect = page.getByRole("combobox").nth(4);
+  await modeSelect.selectOption({ label: "WebGPU" });
+  await page.waitForTimeout(1_200);
+  await expect(page.getByTestId("hud")).toContainText(/(webgpu->webgl-gpgpu|cpu-field|cpu-grid)/);
+});
+
 test("renders inverse theme with visible contrast", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium");
   await waitForScene(page);

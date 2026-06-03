@@ -610,7 +610,7 @@ gantt
 - [x] Verify count changes recreate or resize buffers without leaking memory.
 - [x] Verify CPU fallback remains usable at reduced particle counts.
 - [x] Verify WebGL GPGPU backend supports required float texture capabilities before enabling it.
-- [ ] Verify WebGPU backend fails gracefully when `navigator.gpu` is unavailable.
+- [x] Verify WebGPU backend fails gracefully when `navigator.gpu` is unavailable.
 - [ ] Measure FPS at 1,000, 5,000, 10,000, 25,000, 50,000, and 100,000 particles.
 - [ ] Keep 10,000 particles near 60 FPS on a modern desktop browser.
 - [ ] Keep 50,000 particles interactive by reducing trails, pixel ratio, or render mode.

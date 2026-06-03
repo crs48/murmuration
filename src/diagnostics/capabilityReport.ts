@@ -12,7 +12,7 @@ export const createCapabilityReport = (
   renderer: WebGLRenderer,
 ): CapabilityReport => ({
   rendererBackend: renderer.capabilities.isWebGL2 ? "webgl2" : "webgl1",
-  webgpuAvailable: "gpu" in navigator,
+  webgpuAvailable: Boolean((navigator as Navigator & { gpu?: unknown }).gpu),
   webglGpgpu: getWebglGpuSupport(renderer),
   simulationBackend: "cpu-grid",
 });

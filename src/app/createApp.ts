@@ -104,10 +104,15 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
 
   const updateHud = (): void => {
     const { fps, averageFrameMs } = stats.snapshot();
+    const usesWebglGpgpuFallback =
+      (settings.simulationMode === "webgl-gpgpu" ||
+        settings.simulationMode === "webgpu") &&
+      capability.webglGpgpu.isSupported;
     const simulationLabel =
-      settings.simulationMode === "webgl-gpgpu" &&
-      capability.webglGpgpu.isSupported
-        ? "webgl-gpgpu"
+      usesWebglGpgpuFallback
+        ? settings.simulationMode === "webgpu"
+          ? "webgpu->webgl-gpgpu"
+          : "webgl-gpgpu"
         : settings.simulationMode !== "cpu" && settings.count > gridSimulationLimit
         ? "cpu-field"
         : "cpu-grid";
@@ -151,7 +156,8 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       pointerThreat,
     );
     const useWebglGpgpu =
-      settings.simulationMode === "webgl-gpgpu" &&
+      (settings.simulationMode === "webgl-gpgpu" ||
+        settings.simulationMode === "webgpu") &&
       capability.webglGpgpu.isSupported;
 
     if (useWebglGpgpu) {
