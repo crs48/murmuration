@@ -5,6 +5,7 @@ import {
 
 export type PresetName =
   | "Quiet Roost"
+  | "Lava Lamp"
   | "Ink Cloud"
   | "Predator Ripple"
   | "Vacuole"
@@ -29,6 +30,29 @@ const preset = (
 
 export const presets = [
   preset("Quiet Roost", {}),
+  preset("Lava Lamp", {
+    count: 16000,
+    speed: 0.82,
+    minSpeed: 0.08,
+    maxSpeed: 1.65,
+    separation: 0.82,
+    alignment: 0.82,
+    cohesion: 2.1,
+    inertia: 0.72,
+    noise: 0.04,
+    flow: 0.45,
+    threatMode: "autonomous",
+    threatStrength: 0.34,
+    threatRadius: 0.28,
+    waveGain: 0.72,
+    vacuoleStrength: 0.82,
+    splitGain: 0.18,
+    particleScale: 1.12,
+    depthFade: 0.42,
+    trailMode: "accumulation",
+    trailLength: 0.34,
+    trailOpacity: 0.16,
+  }),
   preset("Ink Cloud", {
     count: 18000,
     speed: 1.1,
@@ -107,4 +131,3 @@ export const presetNames = presets.map(({ name }) => name);
 
 export const presetByName = (name: PresetName): Preset =>
   presets.find((candidate) => candidate.name === name) ?? presets[0];
-

@@ -4,6 +4,7 @@ describe("presets", () => {
   it("defines the expected aesthetic preset set", () => {
     expect(presetNames).toEqual([
       "Quiet Roost",
+      "Lava Lamp",
       "Ink Cloud",
       "Predator Ripple",
       "Vacuole",
@@ -22,4 +23,3 @@ describe("presets", () => {
     expect(presetByName("Predator Ripple").settings.threatMode).toBe("orbit");
   });
 });
-

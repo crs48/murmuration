@@ -1,11 +1,14 @@
 import type { MurmurationSettings } from "../app/settings";
-import { randomSigned, mulberry32 } from "../math/random";
+import { mulberry32 } from "../math/random";
 import { clamp, lerp } from "../math/scalar";
 import {
   writeBuffer3,
-  type Vec3,
 } from "../math/vec3";
 import { buildSpatialHash } from "./cpuSpatialHash";
+import {
+  initialParticlePosition,
+  initialParticleVelocity,
+} from "./particleInitialization";
 import type {
   ParticleBuffers,
   SimulationAdapter,
@@ -19,28 +22,12 @@ export type CpuSimulationOptions = Readonly<{
   initialCount?: number;
 }>;
 
-const initialPosition = (random: () => number, index: number, count: number): Vec3 => {
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-  const t = count <= 1 ? 0 : index / (count - 1);
-  const y = 1 - 2 * t;
-  const radius = Math.sqrt(Math.max(0, 1 - y * y));
-  const theta = goldenAngle * index;
-  const jitter = 0.055;
+const cyclicWeight = (value: number, center: number): number => {
+  const distanceToCenter = Math.abs(value - center);
+  const wrappedDistance = Math.min(distanceToCenter, 1 - distanceToCenter);
+  const weight = Math.max(0, 1 - wrappedDistance * 7.5);
 
-  return [
-    Math.cos(theta) * radius * 0.9 + randomSigned(random) * jitter,
-    y * 0.42 + randomSigned(random) * jitter,
-    Math.sin(theta) * radius * 0.9 + randomSigned(random) * jitter,
-  ];
-};
-
-const initialVelocity = (random: () => number, position: Vec3): Vec3 => {
-  const tangent: Vec3 = [-position[2], randomSigned(random) * 0.18, position[0]];
-  return [
-    tangent[0] * 0.7 + randomSigned(random) * 0.08,
-    tangent[1] + randomSigned(random) * 0.08,
-    tangent[2] * 0.7 + randomSigned(random) * 0.08,
-  ];
+  return weight * weight;
 };
 
 export class CpuMurmurationSimulation implements SimulationAdapter {
@@ -84,8 +71,8 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
     seeds.set(this.buffers.seeds.subarray(0, copyCount));
 
     for (let index = copyCount; index < safeCount; index += 1) {
-      const position = initialPosition(this.random, index, safeCount);
-      const velocity = initialVelocity(this.random, position);
+      const position = initialParticlePosition(this.random, index, safeCount);
+      const velocity = initialParticleVelocity(this.random, position);
       writeBuffer3(positions, index, position);
       writeBuffer3(previousPositions, index, position);
       writeBuffer3(velocities, index, velocity);
@@ -366,37 +353,136 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
       const vy = velocities[offset + 1];
       const vz = velocities[offset + 2];
       const seed = seeds[index] * 1000;
+      const unitSeed = seeds[index];
       const distance = Math.max(0.0001, Math.hypot(px, py, pz));
-      const sheet = Math.sin(seed + input.time * 0.32) * 0.18;
-      const swirlX = -pz / distance;
-      const swirlY = (Math.sin(input.time * 0.26 + seed) * 0.3 - py) * 0.35;
-      const swirlZ = px / distance;
-      const foldX = Math.sin(py * 3.1 + input.time * 0.7 + seed) * settings.flow;
-      const foldY = Math.cos((px + pz) * 2.2 - input.time * 0.5 + seed) * settings.flow;
-      const foldZ = Math.sin(px * 2.7 - input.time * 0.6 + seed) * settings.flow;
-      const desiredRadius = 0.78 + sheet + settings.cohesion * 0.06;
-      const radialError = distance - desiredRadius;
+      const blobA = [
+        Math.sin(input.time * 0.19) * 0.74,
+        Math.sin(input.time * 0.31 + 0.8) * 0.48,
+        Math.cos(input.time * 0.23) * 0.62,
+      ];
+      const blobB = [
+        Math.cos(input.time * 0.17 + 1.6) * 0.68,
+        Math.sin(input.time * 0.37 + 2.1) * 0.54,
+        Math.sin(input.time * 0.29 + 0.4) * 0.72,
+      ];
+      const blobC = [
+        Math.sin(input.time * 0.27 + 2.7) * 0.58,
+        Math.cos(input.time * 0.21 + 1.2) * 0.42,
+        Math.cos(input.time * 0.33 + 2.5) * 0.68,
+      ];
+      const blobD = [
+        Math.cos(input.time * 0.24 + 3.4) * 0.7,
+        Math.sin(input.time * 0.33 + 0.6) * 0.5,
+        Math.sin(input.time * 0.18 + 1.4) * 0.58,
+      ];
+      const blobE = [
+        Math.sin(input.time * 0.14 + 4.4) * 0.48,
+        Math.sin(input.time * 0.47 + 2.3) * 0.62,
+        Math.cos(input.time * 0.26 + 4.0) * 0.7,
+      ];
+      const phase =
+        (unitSeed * 3.71 +
+          input.time * 0.022 +
+          Math.sin(unitSeed * 19 + input.time * 0.11) * 0.09 +
+          1) %
+        1;
+      const weightA = cyclicWeight(phase, 0);
+      const weightB = cyclicWeight(phase, 0.2);
+      const weightC = cyclicWeight(phase, 0.4);
+      const weightD = cyclicWeight(phase, 0.6);
+      const weightE = cyclicWeight(phase, 0.8);
+      const weightTotal = Math.max(
+        0.0001,
+        weightA + weightB + weightC + weightD + weightE,
+      );
+      const targetX =
+        (blobA[0] * weightA +
+          blobB[0] * weightB +
+          blobC[0] * weightC +
+          blobD[0] * weightD +
+          blobE[0] * weightE) /
+        weightTotal;
+      const targetY =
+        (blobA[1] * weightA +
+          blobB[1] * weightB +
+          blobC[1] * weightC +
+          blobD[1] * weightD +
+          blobE[1] * weightE) /
+        weightTotal;
+      const targetZ =
+        (blobA[2] * weightA +
+          blobB[2] * weightB +
+          blobC[2] * weightC +
+          blobD[2] * weightD +
+          blobE[2] * weightE) /
+        weightTotal;
+      const localX = px - targetX;
+      const localY = py - targetY;
+      const localZ = pz - targetZ;
+      const localDistance = Math.max(
+        0.0001,
+        Math.hypot(localX, localY, localZ),
+      );
+      const localDirectionX = localX / localDistance;
+      const localDirectionY = localY / localDistance;
+      const localDirectionZ = localZ / localDistance;
+      const blobRadius =
+        0.24 +
+        (0.5 + 0.5 * Math.sin(unitSeed * 41 + input.time * 0.29)) * 0.16 +
+        Math.sin(phase * Math.PI * 2 + input.time * 0.17) * 0.05;
+      const shellError = localDistance - blobRadius;
+      const axisX = Math.sin(input.time * 0.13 + unitSeed * 7);
+      const axisY = 0.72 + Math.sin(input.time * 0.19 + unitSeed * 3) * 0.28;
+      const axisZ = Math.cos(input.time * 0.17 + unitSeed * 5);
+      const axisLength = Math.max(0.0001, Math.hypot(axisX, axisY, axisZ));
+      const unitAxisX = axisX / axisLength;
+      const unitAxisY = axisY / axisLength;
+      const unitAxisZ = axisZ / axisLength;
+      const tangentX = unitAxisY * localDirectionZ - unitAxisZ * localDirectionY;
+      const tangentY = unitAxisZ * localDirectionX - unitAxisX * localDirectionZ;
+      const tangentZ = unitAxisX * localDirectionY - unitAxisY * localDirectionX;
+      const tangentLength = Math.max(
+        0.0001,
+        Math.hypot(tangentX, tangentY, tangentZ),
+      );
+      const foldX =
+        Math.sin(py * 3.7 + input.time * 0.73 + seed) +
+        Math.cos(pz * 2.9 - input.time * 0.51);
+      const foldY =
+        Math.sin(pz * 3.1 - input.time * 0.67 + seed) -
+        Math.cos(px * 2.4 + input.time * 0.43);
+      const foldZ =
+        Math.sin(px * 3.3 + input.time * 0.59 + seed) +
+        Math.cos(py * 2.6 - input.time * 0.47);
+      const buoyancy =
+        Math.sin(localDistance * 8 - input.time * 1.1 + unitSeed * 17) * 0.09 +
+        (targetY - py) * 0.24;
       let ax =
-        swirlX * settings.alignment * 0.42 -
-        (px / distance) * radialError * settings.cohesion * 0.85 +
-        foldX * 0.11 +
-        Math.sin(seed + input.time * 1.7) * settings.noise * 0.18;
+        -localDirectionX * shellError * settings.cohesion * 1.35 +
+        (targetX - px) * settings.cohesion * 0.22 +
+        (tangentX / tangentLength) * settings.alignment * 0.18 +
+        foldX * settings.flow * 0.085 +
+        Math.sin(seed + input.time * 1.7) * settings.noise * 0.16;
       let ay =
-        swirlY * settings.alignment * 0.42 -
-        py * settings.cohesion * 0.65 +
-        foldY * 0.08 +
-        Math.cos(seed * 1.31 + input.time * 1.4) * settings.noise * 0.18;
+        -localDirectionY * shellError * settings.cohesion * 1.35 +
+        (targetY - py) * settings.cohesion * 0.22 +
+        (tangentY / tangentLength) * settings.alignment * 0.18 +
+        foldY * settings.flow * 0.085 +
+        buoyancy * (0.75 + settings.flow * 0.25) +
+        Math.cos(seed * 1.31 + input.time * 1.4) * settings.noise * 0.16;
       let az =
-        swirlZ * settings.alignment * 0.42 -
-        (pz / distance) * radialError * settings.cohesion * 0.85 +
-        foldZ * 0.11 +
-        Math.cos(seed * 0.73 - input.time * 1.2) * settings.noise * 0.18;
+        -localDirectionZ * shellError * settings.cohesion * 1.35 +
+        (targetZ - pz) * settings.cohesion * 0.22 +
+        (tangentZ / tangentLength) * settings.alignment * 0.18 +
+        foldZ * settings.flow * 0.085 +
+        Math.cos(seed * 0.73 - input.time * 1.2) * settings.noise * 0.16;
 
-      if (distance < 0.34) {
-        const expansion = (0.34 - distance) * settings.separation * 1.5;
-        ax += (px / distance) * expansion;
-        ay += (py / distance) * expansion;
-        az += (pz / distance) * expansion;
+      if (localDistance < blobRadius * 0.42) {
+        const expansion =
+          (blobRadius * 0.42 - localDistance) * settings.separation * 1.8;
+        ax += localDirectionX * expansion;
+        ay += localDirectionY * expansion;
+        az += localDirectionZ * expansion;
       }
 
       if (input.threatPosition && settings.threatStrength > 0) {
@@ -423,7 +509,7 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
         }
       }
 
-      const boundaryAmount = Math.max(0, distance - 1.55) * 1.8;
+      const boundaryAmount = Math.max(0, distance - 1.75) * 2.0;
 
       if (boundaryAmount > 0) {
         ax += (-px / distance) * boundaryAmount;

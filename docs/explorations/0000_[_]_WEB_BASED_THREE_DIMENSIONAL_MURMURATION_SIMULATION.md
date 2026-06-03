@@ -596,7 +596,7 @@ gantt
 - [x] Add screen-space accumulation trail mode as an optional visual effect.
 - [x] Add adaptive quality controls for pixel ratio, particle count, and trail mode.
 - [x] Port simulation to WebGL2 GPGPU with ping-pong position and velocity textures.
-- [ ] Add WebGPU compute adapter after WebGL GPGPU behavior is stable.
+- [x] Add WebGPU compute adapter after WebGL GPGPU behavior is stable.
 - [x] Add diagnostics: FPS, frame time, particle count, backend, pixel ratio, and GPU capability report.
 - [x] Add preset import/export if the control surface becomes a design tool.
 
@@ -617,6 +617,7 @@ gantt
 - [x] Confirm black-on-white and white-on-black themes remain legible in screenshots.
 - [x] Confirm trails do not turn the simulation into a blurry smear.
 - [x] Confirm threat mode creates visible waves or voids without fragmenting the flock permanently.
+- [x] Confirm lava-lamp preset stays blobby, volumetric, and temporally varied instead of collapsing into a torus or flat band.
 - [x] Confirm local speed changes propagate through nearby particles.
 - [x] Confirm particle positions remain bounded and do not accumulate NaNs.
 - [x] Run automated visual smoke tests with Playwright screenshots.

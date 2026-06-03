@@ -1,8 +1,13 @@
 import { cloneSettings, clampSettings } from "./settings";
 import { exportSettings, importSettings } from "./presetSerialization";
 import type { MurmurationDebugApi } from "./debugApi";
+import {
+  selectSimulationBackend,
+  simulationBackendLabel,
+  webgpuStatusLabel,
+  type WebgpuRuntimeStatus,
+} from "./simulationBackend";
 import { CpuMurmurationSimulation } from "../simulation/CpuMurmurationSimulation";
-import { gridSimulationLimit } from "../simulation/CpuMurmurationSimulation";
 import { WebglGpuMurmurationSimulation } from "../simulation/WebglGpuMurmurationSimulation";
 import { createCameraRig } from "../camera/createCameraRig";
 import { createPane, coercePaneSettings } from "../controls/createPane";
@@ -14,6 +19,7 @@ import {
 import { createCapabilityReport } from "../diagnostics/capabilityReport";
 import { ParticleCloud } from "../rendering/ParticleCloud";
 import { GpuParticleCloud } from "../rendering/GpuParticleCloud";
+import { WebgpuParticleLayer } from "../rendering/WebgpuParticleLayer";
 import { createRendererRig } from "../rendering/createRenderer";
 import { TrailLines } from "../rendering/TrailLines";
 import { AccumulationPass, isAccumulationEnabled } from "../rendering/accumulation";
@@ -80,6 +86,10 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   let disposed = false;
   let lastNow = performance.now();
   let lastHudUpdate = 0;
+  let webgpuStatus: WebgpuRuntimeStatus = capability.webgpuAvailable
+    ? "initializing"
+    : "unavailable";
+  let webgpuLayer: WebgpuParticleLayer | null = null;
   const debugApi: MurmurationDebugApi = {
     applySettings: (patch) => {
       Object.assign(settings, clampSettings({ ...settings, ...patch }));
@@ -95,6 +105,22 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
 
   rendererRig.scene.add(trails.lines, particles.points, gpuParticles.points);
   window.__murmuration = debugApi;
+  if (capability.webgpuAvailable) {
+    void WebgpuParticleLayer.create(sceneHost)
+      .then((layer) => {
+        if (disposed) {
+          layer?.dispose();
+          return;
+        }
+
+        webgpuLayer = layer;
+        webgpuStatus = layer ? "ready" : "failed";
+      })
+      .catch((error) => {
+        console.warn("WebGPU initialization failed", error);
+        webgpuStatus = "failed";
+      });
+  }
 
   const updateTheme = (): void => {
     const theme = themeByName(settings.theme);
@@ -120,18 +146,16 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
 
   const updateHud = (): void => {
     const { fps, averageFrameMs } = stats.snapshot();
-    const usesWebglGpgpuFallback =
-      (settings.simulationMode === "webgl-gpgpu" ||
-        settings.simulationMode === "webgpu") &&
-      capability.webglGpgpu.isSupported;
-    const simulationLabel =
-      usesWebglGpgpuFallback
-        ? settings.simulationMode === "webgpu"
-          ? "webgpu->webgl-gpgpu"
-          : "webgl-gpgpu"
-        : settings.simulationMode !== "cpu" && settings.count > gridSimulationLimit
-        ? "cpu-field"
-        : "cpu-grid";
+    const simulationBackend = selectSimulationBackend(
+      settings,
+      capability,
+      webgpuStatus,
+    );
+    const simulationLabel = simulationBackendLabel(
+      simulationBackend,
+      settings.simulationMode,
+    );
+
     hud.innerHTML = `
       <span>${Math.round(fps)} fps</span>
       <span>${settings.count.toLocaleString()} particles</span>
@@ -139,7 +163,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       <span>${simulationLabel}</span>
       <span>${capability.rendererBackend}</span>
       <span>${capability.webglGpgpu.isSupported ? "gpgpu ready" : "gpgpu unavailable"}</span>
-      <span>${capability.webgpuAvailable ? "webgpu ready" : "webgpu unavailable"}</span>
+      <span>${webgpuStatusLabel(webgpuStatus)}</span>
     `;
   };
 
@@ -171,12 +195,37 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       now / 1000,
       pointerThreat,
     );
-    const useWebglGpgpu =
-      (settings.simulationMode === "webgl-gpgpu" ||
-        settings.simulationMode === "webgpu") &&
-      capability.webglGpgpu.isSupported;
+    const simulationBackend = selectSimulationBackend(
+      settings,
+      capability,
+      webgpuStatus,
+    );
 
-    if (useWebglGpgpu) {
+    if (simulationBackend === "webgpu" && webgpuLayer) {
+      const theme = themeByName(settings.theme);
+      particles.points.visible = false;
+      gpuParticles.points.visible = false;
+      trails.lines.visible = false;
+      webgpuLayer.setVisible(true);
+      rendererRig.renderer.render(rendererRig.scene, cameraRig.camera);
+      webgpuLayer.render(
+        {
+          dt,
+          time: now / 1000,
+          settings,
+          threatPosition,
+        },
+        cameraRig.camera,
+        theme.ink,
+        theme.paper,
+        rendererRig.pixelRatio(),
+      );
+
+      if (webgpuLayer.isLost()) {
+        webgpuStatus = "lost";
+      }
+    } else if (simulationBackend === "webgl-gpgpu") {
+      webgpuLayer?.setVisible(false);
       const gpuState = gpuSimulation.step({
         dt,
         time: now / 1000,
@@ -188,6 +237,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       particles.points.visible = false;
       trails.lines.visible = false;
     } else {
+      webgpuLayer?.setVisible(false);
       const buffers = simulation.step({
         dt,
         time: now / 1000,
@@ -199,12 +249,16 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       particles.points.visible = true;
       gpuParticles.points.visible = false;
     }
-    accumulation.begin(
-      rendererRig.renderer,
-      themeByName(settings.theme).paper,
-      settings,
-    );
-    rendererRig.renderer.render(rendererRig.scene, cameraRig.camera);
+
+    if (simulationBackend !== "webgpu") {
+      accumulation.begin(
+        rendererRig.renderer,
+        themeByName(settings.theme).paper,
+        settings,
+      );
+      rendererRig.renderer.render(rendererRig.scene, cameraRig.camera);
+    }
+
     const frameStats = stats.sample(now);
     const qualityPatch = adaptiveQualityPatch(
       settings,
@@ -243,6 +297,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       pane.dispose();
       particles.dispose();
       gpuParticles.dispose();
+      webgpuLayer?.dispose();
       trails.dispose();
       accumulation.dispose();
       cameraRig.dispose();

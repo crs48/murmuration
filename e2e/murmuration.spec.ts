@@ -67,6 +67,81 @@ const expectScreenshotHasInk = async (
   expect(brightPixels).toBeGreaterThan(thresholds.bright);
 };
 
+type OrganicShapeSample = Readonly<{
+  path: string;
+  darkPixels: number;
+  aspect: number;
+  verticalCoverage: number;
+  fillRatio: number;
+  occupied: readonly number[];
+}>;
+
+const jaccardDistance = (
+  first: readonly number[],
+  second: readonly number[],
+): number => {
+  let intersection = 0;
+  let union = 0;
+
+  for (let index = 0; index < first.length; index += 1) {
+    intersection += first[index] && second[index] ? 1 : 0;
+    union += first[index] || second[index] ? 1 : 0;
+  }
+
+  return union === 0 ? 0 : 1 - intersection / union;
+};
+
+const organicShapeSample = async (
+  page: Page,
+  path: string,
+): Promise<OrganicShapeSample> => {
+  mkdirSync("output/playwright", { recursive: true });
+  const buffer = await page.screenshot({ path });
+  const image = PNG.sync.read(buffer);
+  const gridWidth = 32;
+  const gridHeight = 18;
+  const gridCounts = new Uint16Array(gridWidth * gridHeight);
+  let minX = image.width;
+  let minY = image.height;
+  let maxX = 0;
+  let maxY = 0;
+  let darkPixels = 0;
+
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      const offset = (y * image.width + x) * 4;
+      const luminance =
+        0.2126 * image.data[offset] +
+        0.7152 * image.data[offset + 1] +
+        0.0722 * image.data[offset + 2];
+
+      if (luminance < 115) {
+        darkPixels += 1;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+        const gridX = Math.min(gridWidth - 1, Math.floor((x / image.width) * gridWidth));
+        const gridY = Math.min(gridHeight - 1, Math.floor((y / image.height) * gridHeight));
+        gridCounts[gridY * gridWidth + gridX] += 1;
+      }
+    }
+  }
+
+  const width = maxX - minX + 1;
+  const height = maxY - minY + 1;
+  const cellArea = (image.width / gridWidth) * (image.height / gridHeight);
+
+  return {
+    path,
+    darkPixels,
+    aspect: width / Math.max(1, height),
+    verticalCoverage: height / image.height,
+    fillRatio: darkPixels / Math.max(1, width * height),
+    occupied: Array.from(gridCounts, (count) => (count / cellArea > 0.012 ? 1 : 0)),
+  };
+};
+
 test("renders a nonblank desktop murmuration scene", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium");
   await waitForScene(page);
@@ -164,6 +239,61 @@ test("renders predator ripple behavior without losing flock cohesion", async ({ 
   });
 });
 
+test("keeps the Lava Lamp preset organic and varied over time", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium");
+  await waitForScene(page);
+  const ready = (await page.getByTestId("hud").textContent())?.includes("gpgpu ready");
+
+  test.skip(!ready, "WebGL GPGPU is unavailable in this browser");
+  await page.getByRole("combobox").nth(0).selectOption({ label: "Lava Lamp" });
+  await applySettings(page, {
+    adaptiveQuality: false,
+    autoOrbit: false,
+    simulationMode: "webgl-gpgpu",
+    trailMode: "off",
+  });
+  await page.evaluate(() => {
+    document.querySelector(".hud")?.setAttribute("style", "display: none");
+    document.querySelector(".pane-host")?.setAttribute("style", "display: none");
+  });
+
+  const samples: OrganicShapeSample[] = [];
+
+  await page.waitForTimeout(2_200);
+
+  for (let index = 0; index < 4; index += 1) {
+    if (index > 0) {
+      await page.waitForTimeout(3_200);
+    }
+
+    samples.push(
+      await organicShapeSample(page, screenshotPath(`lava-lamp-organic-${index}`)),
+    );
+  }
+
+  const pairDistances = samples.flatMap((sample, index) =>
+    samples.slice(index + 1).map((nextSample) =>
+      jaccardDistance(sample.occupied, nextSample.occupied),
+    ),
+  );
+  const meanDistance =
+    pairDistances.reduce((sum, distance) => sum + distance, 0) /
+    Math.max(1, pairDistances.length);
+  const summary = {
+    samples: samples.map(({ occupied, ...sample }) => sample),
+    meanDistance,
+  };
+
+  writeFileSync(
+    "output/playwright/lava-lamp-organic-summary.json",
+    `${JSON.stringify(summary, null, 2)}\n`,
+  );
+  expect(Math.min(...samples.map((sample) => sample.darkPixels))).toBeGreaterThan(75_000);
+  expect(Math.min(...samples.map((sample) => sample.verticalCoverage))).toBeGreaterThan(0.45);
+  expect(Math.max(...samples.map((sample) => sample.aspect))).toBeLessThan(2.8);
+  expect(meanDistance).toBeGreaterThan(0.12);
+});
+
 
 test("keeps the scene responsive during camera movement", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium");
@@ -207,6 +337,7 @@ test("applies every preset and resizes the particle buffers", async ({ page }, t
   const presetSelect = page.getByRole("combobox").nth(0);
   const presets = [
     ["Quiet Roost", "3,000 particles"],
+    ["Lava Lamp", "16,000 particles"],
     ["Ink Cloud", "18,000 particles"],
     ["Predator Ripple", "12,000 particles"],
     ["Vacuole", "10,000 particles"],
