@@ -697,14 +697,14 @@ Goal:
 - [x] Add `SwarmPilotRig` with core position, velocity, heading, radius, roll, and comfort limits.
 - [x] Extend `SimulationStepInput` with a pilot/swarm-core field instead of passing only `threatPosition`.
 - [x] Add pilot-aware force terms in `rules.ts`.
-- [ ] Remove per-frame allocations from the CPU simulation path or isolate CPU simulation to low-count debug mode.
+- [x] Remove per-frame allocations from the CPU simulation path or isolate CPU simulation to low-count debug mode.
 - [x] Add `EnvironmentAdapter` and `ReferenceGrid` modules.
 - [x] Add wrapped fixed dot lattice rendering as the first spatial reference mode.
 - [x] Add low-cost dust, air, and starlight medium presets.
 - [x] Add medium parameters for drag, turbulence, wake response, point size, opacity, and color/theme behavior.
 - [x] Add adaptive Quest 2 quality caps for particle counts, render scale, and medium complexity.
-- [ ] Prototype WebGL2 GPGPU ping-pong textures for position/velocity updates.
-- [ ] Keep WebGPU exploration behind capability flags and outside the critical Quest 2 path until WebXR/WebGPU binding support is proven on device.
+- [x] Prototype WebGL2 GPGPU ping-pong textures for position/velocity updates.
+- [x] Keep WebGPU exploration behind capability flags and outside the critical Quest 2 path until WebXR/WebGPU binding support is proven on device.
 - [ ] Add in-scene minimal VR UI for mode/preset feedback.
 - [ ] Add haptic pulses where WebXR/browser support allows it, but keep the simulator playable without haptics.
 - [ ] Add comfort presets: `Comfort Flight`, `Swarm Pilot`, and `Acro Swarm`.
@@ -713,7 +713,7 @@ Goal:
 
 ## Validation Checklist
 
-- [ ] Desktop preview still runs with orbit controls and Tweakpane.
+- [x] Desktop preview still runs with orbit controls and Tweakpane.
 - [ ] Quest 2 can enter immersive VR from a secure local or hosted URL.
 - [ ] Quest 2 can render the current particle cloud in stereo without controller input.
 - [ ] Controller handedness is detected correctly on Quest Touch controllers.
@@ -728,10 +728,10 @@ Goal:
 - [ ] No avoidable `Float32Array` allocations occur in the hot VR frame path.
 - [ ] Adaptive quality reduces count/render scale before dropping below comfort frame rate for sustained periods.
 - [ ] Exiting XR returns cleanly to desktop preview.
-- [ ] App handles missing WebXR support gracefully.
+- [x] App handles missing WebXR support gracefully.
 - [ ] App handles missing `gamepad` state gracefully.
 - [ ] App handles one-controller mode gracefully.
-- [ ] Tests cover controller intent reduction, pilot rig integration, medium presets, and simulation input clamping.
+- [x] Tests cover controller intent reduction, pilot rig integration, medium presets, and simulation input clamping.
 - [ ] Profiling distinguishes CPU-bound, vertex-bound, and fragment-bound cases.
 
 ## Example Code
