@@ -5,7 +5,7 @@ import { themeByName } from "./themes";
 export type RendererRig = Readonly<{
   renderer: WebGLRenderer;
   scene: Scene;
-  resize: (settings: MurmurationSettings) => void;
+  resize: (settings: MurmurationSettings) => boolean;
   pixelRatio: () => number;
   dispose: () => void;
 }>;
@@ -26,15 +26,33 @@ export const createRendererRig = (
   const pixelRatio = () =>
     Math.min(window.devicePixelRatio || 1, settings.pixelRatioCap);
 
-  const resize = (currentSettings: MurmurationSettings): void => {
+  let lastWidth = 0;
+  let lastHeight = 0;
+  let lastPixelRatio = 0;
+
+  const resize = (currentSettings: MurmurationSettings): boolean => {
     const { clientWidth, clientHeight } = host;
     const nextPixelRatio = Math.min(
       window.devicePixelRatio || 1,
       currentSettings.pixelRatioCap,
     );
+
+    if (
+      clientWidth === lastWidth &&
+      clientHeight === lastHeight &&
+      nextPixelRatio === lastPixelRatio
+    ) {
+      scene.background = themeByName(currentSettings.theme).paper;
+      return false;
+    }
+
+    lastWidth = clientWidth;
+    lastHeight = clientHeight;
+    lastPixelRatio = nextPixelRatio;
     renderer.setPixelRatio(nextPixelRatio);
     renderer.setSize(clientWidth, clientHeight, false);
     scene.background = themeByName(currentSettings.theme).paper;
+    return true;
   };
 
   resize(settings);
@@ -50,4 +68,3 @@ export const createRendererRig = (
     },
   };
 };
-

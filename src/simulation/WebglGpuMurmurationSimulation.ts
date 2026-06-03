@@ -332,37 +332,33 @@ export class WebglGpuMurmurationSimulation {
     this.renderer.autoClear = true;
 
     this.quad.material = this.velocityMaterial;
-    Object.assign(this.velocityMaterial.uniforms, {
-      uPositionTexture: { value: this.positionSource },
-      uVelocityTexture: { value: this.velocitySource },
-      uTime: { value: input.time },
-      uDelta: { value: delta },
-      uSpeed: { value: input.settings.speed },
-      uMinSpeed: { value: input.settings.minSpeed },
-      uMaxSpeed: { value: input.settings.maxSpeed },
-      uSeparation: { value: input.settings.separation },
-      uAlignment: { value: input.settings.alignment },
-      uCohesion: { value: input.settings.cohesion },
-      uNoise: { value: input.settings.noise },
-      uFlow: { value: input.settings.flow },
-      uThreatEnabled: { value: input.threatPosition ? 1 : 0 },
-      uThreatPosition: { value: input.threatPosition ?? [0, 0, 0] },
-      uThreatStrength: { value: input.settings.threatStrength },
-      uThreatRadius: { value: input.settings.threatRadius },
-      uWaveGain: { value: input.settings.waveGain },
-      uVacuoleStrength: { value: input.settings.vacuoleStrength },
-      uSplitGain: { value: input.settings.splitGain },
-    });
+    this.velocityMaterial.uniforms.uPositionTexture.value = this.positionSource;
+    this.velocityMaterial.uniforms.uVelocityTexture.value = this.velocitySource;
+    this.velocityMaterial.uniforms.uTime.value = input.time;
+    this.velocityMaterial.uniforms.uDelta.value = delta;
+    this.velocityMaterial.uniforms.uSpeed.value = input.settings.speed;
+    this.velocityMaterial.uniforms.uMinSpeed.value = input.settings.minSpeed;
+    this.velocityMaterial.uniforms.uMaxSpeed.value = input.settings.maxSpeed;
+    this.velocityMaterial.uniforms.uSeparation.value = input.settings.separation;
+    this.velocityMaterial.uniforms.uAlignment.value = input.settings.alignment;
+    this.velocityMaterial.uniforms.uCohesion.value = input.settings.cohesion;
+    this.velocityMaterial.uniforms.uNoise.value = input.settings.noise;
+    this.velocityMaterial.uniforms.uFlow.value = input.settings.flow;
+    this.velocityMaterial.uniforms.uThreatEnabled.value = input.threatPosition ? 1 : 0;
+    this.velocityMaterial.uniforms.uThreatPosition.value = input.threatPosition ?? [0, 0, 0];
+    this.velocityMaterial.uniforms.uThreatStrength.value = input.settings.threatStrength;
+    this.velocityMaterial.uniforms.uThreatRadius.value = input.settings.threatRadius;
+    this.velocityMaterial.uniforms.uWaveGain.value = input.settings.waveGain;
+    this.velocityMaterial.uniforms.uVacuoleStrength.value = input.settings.vacuoleStrength;
+    this.velocityMaterial.uniforms.uSplitGain.value = input.settings.splitGain;
     this.renderer.setRenderTarget(velocityTarget);
     this.renderer.render(this.scene, this.camera);
 
     this.quad.material = this.positionMaterial;
-    Object.assign(this.positionMaterial.uniforms, {
-      uPositionTexture: { value: this.positionSource },
-      uVelocityTexture: { value: velocityTarget.texture },
-      uDelta: { value: delta },
-      uSpeed: { value: input.settings.speed },
-    });
+    this.positionMaterial.uniforms.uPositionTexture.value = this.positionSource;
+    this.positionMaterial.uniforms.uVelocityTexture.value = velocityTarget.texture;
+    this.positionMaterial.uniforms.uDelta.value = delta;
+    this.positionMaterial.uniforms.uSpeed.value = input.settings.speed;
     this.renderer.setRenderTarget(positionTarget);
     this.renderer.render(this.scene, this.camera);
     this.renderer.setRenderTarget(null);

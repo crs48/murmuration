@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { PNG } from "pngjs";
 
 const screenshotPath = (name: string): string =>
@@ -12,6 +12,18 @@ const waitForScene = async (page: Page): Promise<void> => {
   await expect(page.getByTestId("settings-panel")).toContainText("Murmuration");
   await page.waitForTimeout(1_200);
 };
+
+const applySettings = async (
+  page: Page,
+  patch: Record<string, unknown>,
+): Promise<void> => {
+  await page.evaluate((nextPatch) => {
+    window.__murmuration?.applySettings(nextPatch);
+  }, patch);
+};
+
+const debugHudText = async (page: Page): Promise<string> =>
+  page.evaluate(() => window.__murmuration?.snapshot().hudText ?? "");
 
 const expectScreenshotHasInk = async (
   page: Page,
@@ -156,4 +168,45 @@ test("applies every preset and resizes the particle buffers", async ({ page }, t
     await presetSelect.selectOption({ label });
     await expect(page.getByTestId("hud")).toContainText(count);
   }
+});
+
+test("records a high-count WebGL GPGPU performance matrix", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium");
+  await waitForScene(page);
+  const ready = (await page.getByTestId("hud").textContent())?.includes("gpgpu ready");
+
+  test.skip(!ready, "WebGL GPGPU is unavailable in this browser");
+  await applySettings(page, {
+    adaptiveQuality: false,
+    pixelRatioCap: 1,
+    simulationMode: "webgl-gpgpu",
+    trailMode: "off",
+  });
+
+  const counts = [1_000, 5_000, 10_000, 25_000, 50_000, 100_000];
+  const samples: Array<{ count: number; fps: number; hudText: string }> = [];
+
+  for (const count of counts) {
+    await applySettings(page, { count });
+    await page.waitForTimeout(1_200);
+    const hudText = await debugHudText(page);
+    const fps = Number(hudText.match(/(\d+) fps/)?.[1] ?? 0);
+
+    samples.push({ count, fps, hudText });
+    expect(hudText).toContain(`${count.toLocaleString()} particles`);
+
+    if (count === 10_000) {
+      expect(fps).toBeGreaterThanOrEqual(50);
+    }
+
+    if (count === 50_000) {
+      expect(fps).toBeGreaterThanOrEqual(18);
+    }
+  }
+
+  mkdirSync("output/playwright", { recursive: true });
+  writeFileSync(
+    "output/playwright/performance-matrix.json",
+    `${JSON.stringify(samples, null, 2)}\n`,
+  );
 });

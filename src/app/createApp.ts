@@ -1,5 +1,6 @@
 import { cloneSettings, clampSettings } from "./settings";
 import { exportSettings, importSettings } from "./presetSerialization";
+import type { MurmurationDebugApi } from "./debugApi";
 import { CpuMurmurationSimulation } from "../simulation/CpuMurmurationSimulation";
 import { gridSimulationLimit } from "../simulation/CpuMurmurationSimulation";
 import { WebglGpuMurmurationSimulation } from "../simulation/WebglGpuMurmurationSimulation";
@@ -79,10 +80,21 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   let disposed = false;
   let lastNow = performance.now();
   let lastHudUpdate = 0;
+  const debugApi: MurmurationDebugApi = {
+    applySettings: (patch) => {
+      Object.assign(settings, clampSettings({ ...settings, ...patch }));
+      pane.refresh();
+    },
+    snapshot: () => ({
+      settings: { ...settings },
+      hudText: hud.textContent?.replace(/\s+/g, " ").trim() ?? "",
+    }),
+  };
 
   const gpuSimulation = new WebglGpuMurmurationSimulation(rendererRig.renderer);
 
   rendererRig.scene.add(trails.lines, particles.points, gpuParticles.points);
+  window.__murmuration = debugApi;
 
   const updateTheme = (): void => {
     const theme = themeByName(settings.theme);
@@ -97,8 +109,12 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   };
 
   const resize = (): void => {
-    rendererRig.resize(settings);
-    accumulation.reset();
+    const didResize = rendererRig.resize(settings);
+
+    if (didResize) {
+      accumulation.reset();
+    }
+
     cameraRig.resize(settings);
   };
 
@@ -233,6 +249,9 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       rendererRig.dispose();
       simulation.dispose();
       gpuSimulation.dispose();
+      if (window.__murmuration === debugApi) {
+        delete window.__murmuration;
+      }
       root.replaceChildren();
     },
   };
