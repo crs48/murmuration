@@ -584,10 +584,10 @@ gantt
 - [ ] Add `OrbitControls` with damping, pan, wheel zoom, and touch gestures.
 - [ ] Add a right-side settings panel with grouped controls.
 - [x] Define a declarative `MurmurationSettings` object and preset library.
-- [ ] Implement CPU spatial-hash simulation with structure-of-arrays buffers.
-- [ ] Add topological neighbor approximation with default neighbor count near 7.
-- [ ] Add Reynolds force terms: separation, alignment, cohesion, speed clamp, and boundary steering.
-- [ ] Add low-frequency flow field for sheet folding and undulation.
+- [x] Implement CPU spatial-hash simulation with structure-of-arrays buffers.
+- [x] Add topological neighbor approximation with default neighbor count near 7.
+- [x] Add Reynolds force terms: separation, alignment, cohesion, speed clamp, and boundary steering.
+- [x] Add low-frequency flow field for sheet folding and undulation.
 - [ ] Add threat field modes: cursor, orbiting, and autonomous.
 - [ ] Add threat response terms for wave, vacuole, split, blackening, and flash expansion.
 - [ ] Render particles with a custom point or impostor shader.
@@ -618,9 +618,9 @@ gantt
 - [ ] Confirm trails do not turn the simulation into a blurry smear.
 - [ ] Confirm threat mode creates visible waves or voids without fragmenting the flock permanently.
 - [ ] Confirm local speed changes propagate through nearby particles.
-- [ ] Confirm particle positions remain bounded and do not accumulate NaNs.
+- [x] Confirm particle positions remain bounded and do not accumulate NaNs.
 - [ ] Run automated visual smoke tests with Playwright screenshots.
-- [ ] Run unit tests for settings reducers, presets, CPU spatial hash, and simulation invariants.
+- [x] Run unit tests for settings reducers, presets, CPU spatial hash, and simulation invariants.
 - [ ] Run a long soak test for at least 10 minutes with adaptive quality enabled.
 
 ## Example Code
