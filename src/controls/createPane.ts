@@ -12,10 +12,16 @@ export type PaneController = Readonly<{
   dispose: () => void;
 }>;
 
+export type PaneActions = Readonly<{
+  onResetCamera: () => void;
+  onExportPreset: () => string;
+  onImportPreset: (source: string) => void;
+}>;
+
 export const createPane = (
   host: HTMLElement,
   settings: MutableSettings,
-  onResetCamera: () => void,
+  actions: PaneActions,
 ): PaneController => {
   const pane = new Pane({
     title: "Murmuration",
@@ -90,7 +96,7 @@ export const createPane = (
   camera.addBinding(settings, "autoOrbit");
   camera.addBinding(settings, "cameraDamping", { min: 0, max: 0.25, step: 0.01 });
   camera.addBinding(settings, "fov", { min: 25, max: 75, step: 1 });
-  camera.addButton({ title: "Reset camera" }).on("click", onResetCamera);
+  camera.addButton({ title: "Reset camera" }).on("click", actions.onResetCamera);
 
   const performance = pane.addFolder({ title: "Performance" });
   performance.addBinding(settings, "adaptiveQuality");
@@ -102,6 +108,22 @@ export const createPane = (
       "WebGL GPGPU": "webgl-gpgpu",
       WebGPU: "webgpu",
     },
+  });
+
+  const presetIo = pane.addFolder({ title: "Preset IO" });
+  presetIo.addButton({ title: "Copy preset JSON" }).on("click", () => {
+    const serialized = actions.onExportPreset();
+    void navigator.clipboard?.writeText(serialized);
+  });
+  presetIo.addButton({ title: "Paste preset JSON" }).on("click", async () => {
+    const source = await navigator.clipboard?.readText();
+
+    if (!source) {
+      return;
+    }
+
+    actions.onImportPreset(source);
+    pane.refresh();
   });
 
   return {

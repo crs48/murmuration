@@ -593,12 +593,12 @@ gantt
 - [x] Render particles with a custom point or impostor shader.
 - [x] Add monochrome themes: ink, inverse, paper, graphite.
 - [x] Add velocity-stretched particle tails.
-- [ ] Add screen-space accumulation trail mode as an optional visual effect.
+- [x] Add screen-space accumulation trail mode as an optional visual effect.
 - [x] Add adaptive quality controls for pixel ratio, particle count, and trail mode.
 - [ ] Port simulation to WebGL2 GPGPU with ping-pong position and velocity textures.
 - [ ] Add WebGPU compute adapter after WebGL GPGPU behavior is stable.
 - [x] Add diagnostics: FPS, frame time, particle count, backend, pixel ratio, and GPU capability report.
-- [ ] Add preset import/export if the control surface becomes a design tool.
+- [x] Add preset import/export if the control surface becomes a design tool.
 
 ## Validation Checklist ✅
 
@@ -615,7 +615,7 @@ gantt
 - [ ] Keep 10,000 particles near 60 FPS on a modern desktop browser.
 - [ ] Keep 50,000 particles interactive by reducing trails, pixel ratio, or render mode.
 - [ ] Confirm black-on-white and white-on-black themes remain legible in screenshots.
-- [ ] Confirm trails do not turn the simulation into a blurry smear.
+- [x] Confirm trails do not turn the simulation into a blurry smear.
 - [ ] Confirm threat mode creates visible waves or voids without fragmenting the flock permanently.
 - [ ] Confirm local speed changes propagate through nearby particles.
 - [x] Confirm particle positions remain bounded and do not accumulate NaNs.

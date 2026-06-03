@@ -36,7 +36,7 @@ export class TrailLines {
   ): void => {
     this.ensureCapacity(buffers.count);
     this.lines.visible =
-      settings.trailMode !== "off" &&
+      settings.trailMode === "velocity" &&
       settings.trailLength > 0 &&
       settings.trailOpacity > 0;
     this.material.opacity = settings.trailOpacity;
@@ -92,4 +92,3 @@ export class TrailLines {
     );
   };
 }
-

@@ -1,4 +1,5 @@
 import { cloneSettings, clampSettings } from "./settings";
+import { exportSettings, importSettings } from "./presetSerialization";
 import { CpuMurmurationSimulation } from "../simulation/CpuMurmurationSimulation";
 import { gridSimulationLimit } from "../simulation/CpuMurmurationSimulation";
 import { createCameraRig } from "../camera/createCameraRig";
@@ -12,6 +13,7 @@ import { createCapabilityReport } from "../diagnostics/capabilityReport";
 import { ParticleCloud } from "../rendering/ParticleCloud";
 import { createRendererRig } from "../rendering/createRenderer";
 import { TrailLines } from "../rendering/TrailLines";
+import { AccumulationPass, isAccumulationEnabled } from "../rendering/accumulation";
 import { themeByName } from "../rendering/themes";
 import {
   deriveThreatPosition,
@@ -55,6 +57,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   });
   const particles = new ParticleCloud(settings);
   const trails = new TrailLines(settings);
+  const accumulation = new AccumulationPass();
   const stats = createFrameStatsTracker();
   const adaptiveQuality = createAdaptiveQualityState();
   const capability = createCapabilityReport(rendererRig.renderer);
@@ -62,7 +65,13 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     active: false,
     position: [0, 0, 0],
   };
-  const pane = createPane(paneHost, settings, cameraRig.reset);
+  const pane = createPane(paneHost, settings, {
+    onResetCamera: cameraRig.reset,
+    onExportPreset: () => exportSettings(settings),
+    onImportPreset: (source) => {
+      Object.assign(settings, importSettings(source));
+    },
+  });
   let animationId = 0;
   let disposed = false;
   let lastNow = performance.now();
@@ -72,7 +81,9 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
 
   const updateTheme = (): void => {
     const theme = themeByName(settings.theme);
-    rendererRig.scene.background = theme.paper;
+    rendererRig.scene.background = isAccumulationEnabled(settings)
+      ? null
+      : theme.paper;
     particles.setTheme(theme.ink, theme.paper);
     trails.setTheme(theme.ink);
     document.documentElement.style.setProperty("--panel-bg", theme.panel);
@@ -81,6 +92,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
 
   const resize = (): void => {
     rendererRig.resize(settings);
+    accumulation.reset();
     cameraRig.resize(settings);
   };
 
@@ -131,6 +143,11 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     });
     trails.update(buffers, settings);
     particles.update(buffers, settings, rendererRig.pixelRatio());
+    accumulation.begin(
+      rendererRig.renderer,
+      themeByName(settings.theme).paper,
+      settings,
+    );
     rendererRig.renderer.render(rendererRig.scene, cameraRig.camera);
     const frameStats = stats.sample(now);
     const qualityPatch = adaptiveQualityPatch(
@@ -170,6 +187,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       pane.dispose();
       particles.dispose();
       trails.dispose();
+      accumulation.dispose();
       cameraRig.dispose();
       rendererRig.dispose();
       simulation.dispose();
