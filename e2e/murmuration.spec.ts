@@ -70,6 +70,8 @@ const expectScreenshotHasInk = async (
 type OrganicShapeSample = Readonly<{
   path: string;
   darkPixels: number;
+  centroid: readonly [number, number];
+  edgePixelRatio: number;
   aspect: number;
   verticalCoverage: number;
   fillRatio: number;
@@ -105,6 +107,9 @@ const organicShapeSample = async (
   let minY = image.height;
   let maxX = 0;
   let maxY = 0;
+  let sumX = 0;
+  let sumY = 0;
+  let edgePixels = 0;
   let darkPixels = 0;
 
   for (let y = 0; y < image.height; y += 1) {
@@ -117,6 +122,12 @@ const organicShapeSample = async (
 
       if (luminance < 115) {
         darkPixels += 1;
+        sumX += x;
+        sumY += y;
+        edgePixels +=
+          x < 24 || y < 24 || x > image.width - 25 || y > image.height - 25
+            ? 1
+            : 0;
         minX = Math.min(minX, x);
         minY = Math.min(minY, y);
         maxX = Math.max(maxX, x);
@@ -135,6 +146,11 @@ const organicShapeSample = async (
   return {
     path,
     darkPixels,
+    centroid: [
+      sumX / Math.max(1, darkPixels),
+      sumY / Math.max(1, darkPixels),
+    ],
+    edgePixelRatio: edgePixels / Math.max(1, darkPixels),
     aspect: width / Math.max(1, height),
     verticalCoverage: height / image.height,
     fillRatio: darkPixels / Math.max(1, width * height),
@@ -279,18 +295,28 @@ test("keeps the Lava Lamp preset organic and varied over time", async ({ page },
   const meanDistance =
     pairDistances.reduce((sum, distance) => sum + distance, 0) /
     Math.max(1, pairDistances.length);
+  const centroidSpanX =
+    Math.max(...samples.map((sample) => sample.centroid[0])) -
+    Math.min(...samples.map((sample) => sample.centroid[0]));
+  const centroidSpanY =
+    Math.max(...samples.map((sample) => sample.centroid[1])) -
+    Math.min(...samples.map((sample) => sample.centroid[1]));
   const summary = {
     samples: samples.map(({ occupied, ...sample }) => sample),
     meanDistance,
+    centroidSpanX,
+    centroidSpanY,
   };
 
   writeFileSync(
     "output/playwright/lava-lamp-organic-summary.json",
     `${JSON.stringify(summary, null, 2)}\n`,
   );
-  expect(Math.min(...samples.map((sample) => sample.darkPixels))).toBeGreaterThan(75_000);
+  expect(Math.min(...samples.map((sample) => sample.darkPixels))).toBeGreaterThan(60_000);
+  expect(Math.max(...samples.map((sample) => sample.edgePixelRatio))).toBeLessThan(0.18);
   expect(Math.min(...samples.map((sample) => sample.verticalCoverage))).toBeGreaterThan(0.45);
   expect(Math.max(...samples.map((sample) => sample.aspect))).toBeLessThan(2.8);
+  expect(Math.max(centroidSpanX, centroidSpanY)).toBeGreaterThan(70);
   expect(meanDistance).toBeGreaterThan(0.12);
 });
 

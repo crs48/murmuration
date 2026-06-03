@@ -5,6 +5,7 @@ import {
   writeBuffer3,
 } from "../math/vec3";
 import { buildSpatialHash } from "./cpuSpatialHash";
+import { flockWanderCenter } from "./flockWander";
 import {
   initialParticlePosition,
   initialParticleVelocity,
@@ -341,6 +342,10 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
     const { count, positions, previousPositions, velocities, speeds, seeds } = this.buffers;
     const { nextPositions, nextVelocities } = this;
     const minSpeed = Math.min(settings.minSpeed, settings.maxSpeed);
+    const [flockCenterX, flockCenterY, flockCenterZ] = flockWanderCenter(
+      settings,
+      input.time,
+    );
 
     previousPositions.set(positions);
 
@@ -354,31 +359,37 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
       const vz = velocities[offset + 2];
       const seed = seeds[index] * 1000;
       const unitSeed = seeds[index];
-      const distance = Math.max(0.0001, Math.hypot(px, py, pz));
+      const fromCenterX = px - flockCenterX;
+      const fromCenterY = py - flockCenterY;
+      const fromCenterZ = pz - flockCenterZ;
+      const distance = Math.max(
+        0.0001,
+        Math.hypot(fromCenterX, fromCenterY, fromCenterZ),
+      );
       const blobA = [
-        Math.sin(input.time * 0.19) * 0.74,
-        Math.sin(input.time * 0.31 + 0.8) * 0.48,
-        Math.cos(input.time * 0.23) * 0.62,
+        flockCenterX + Math.sin(input.time * 0.19) * 0.74,
+        flockCenterY + Math.sin(input.time * 0.31 + 0.8) * 0.48,
+        flockCenterZ + Math.cos(input.time * 0.23) * 0.62,
       ];
       const blobB = [
-        Math.cos(input.time * 0.17 + 1.6) * 0.68,
-        Math.sin(input.time * 0.37 + 2.1) * 0.54,
-        Math.sin(input.time * 0.29 + 0.4) * 0.72,
+        flockCenterX + Math.cos(input.time * 0.17 + 1.6) * 0.68,
+        flockCenterY + Math.sin(input.time * 0.37 + 2.1) * 0.54,
+        flockCenterZ + Math.sin(input.time * 0.29 + 0.4) * 0.72,
       ];
       const blobC = [
-        Math.sin(input.time * 0.27 + 2.7) * 0.58,
-        Math.cos(input.time * 0.21 + 1.2) * 0.42,
-        Math.cos(input.time * 0.33 + 2.5) * 0.68,
+        flockCenterX + Math.sin(input.time * 0.27 + 2.7) * 0.58,
+        flockCenterY + Math.cos(input.time * 0.21 + 1.2) * 0.42,
+        flockCenterZ + Math.cos(input.time * 0.33 + 2.5) * 0.68,
       ];
       const blobD = [
-        Math.cos(input.time * 0.24 + 3.4) * 0.7,
-        Math.sin(input.time * 0.33 + 0.6) * 0.5,
-        Math.sin(input.time * 0.18 + 1.4) * 0.58,
+        flockCenterX + Math.cos(input.time * 0.24 + 3.4) * 0.7,
+        flockCenterY + Math.sin(input.time * 0.33 + 0.6) * 0.5,
+        flockCenterZ + Math.sin(input.time * 0.18 + 1.4) * 0.58,
       ];
       const blobE = [
-        Math.sin(input.time * 0.14 + 4.4) * 0.48,
-        Math.sin(input.time * 0.47 + 2.3) * 0.62,
-        Math.cos(input.time * 0.26 + 4.0) * 0.7,
+        flockCenterX + Math.sin(input.time * 0.14 + 4.4) * 0.48,
+        flockCenterY + Math.sin(input.time * 0.47 + 2.3) * 0.62,
+        flockCenterZ + Math.cos(input.time * 0.26 + 4.0) * 0.7,
       ];
       const phase =
         (unitSeed * 3.71 +
@@ -512,9 +523,9 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
       const boundaryAmount = Math.max(0, distance - 1.75) * 2.0;
 
       if (boundaryAmount > 0) {
-        ax += (-px / distance) * boundaryAmount;
-        ay += (-py / distance) * boundaryAmount;
-        az += (-pz / distance) * boundaryAmount;
+        ax += (-fromCenterX / distance) * boundaryAmount;
+        ay += (-fromCenterY / distance) * boundaryAmount;
+        az += (-fromCenterZ / distance) * boundaryAmount;
       }
 
       const acceleratedX = vx + ax * dt * settings.speed;

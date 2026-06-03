@@ -588,6 +588,7 @@ gantt
 - [x] Add topological neighbor approximation with default neighbor count near 7.
 - [x] Add Reynolds force terms: separation, alignment, cohesion, speed clamp, and boundary steering.
 - [x] Add low-frequency flow field for sheet folding and undulation.
+- [x] Add bounded flock midpoint wandering so the volume drifts through the viewport instead of orbiting around screen center.
 - [x] Add threat field modes: cursor, orbiting, and autonomous.
 - [x] Add threat response terms for wave, vacuole, split, blackening, and flash expansion.
 - [x] Render particles with a custom point or impostor shader.
@@ -618,6 +619,7 @@ gantt
 - [x] Confirm trails do not turn the simulation into a blurry smear.
 - [x] Confirm threat mode creates visible waves or voids without fragmenting the flock permanently.
 - [x] Confirm lava-lamp preset stays blobby, volumetric, and temporally varied instead of collapsing into a torus or flat band.
+- [x] Confirm the lava-lamp midpoint visibly moves inside the viewport without excessive edge clipping.
 - [x] Confirm local speed changes propagate through nearby particles.
 - [x] Confirm particle positions remain bounded and do not accumulate NaNs.
 - [x] Run automated visual smoke tests with Playwright screenshots.

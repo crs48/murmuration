@@ -17,6 +17,8 @@ export type MurmurationSettings = Readonly<{
   inertia: number;
   noise: number;
   flow: number;
+  wanderRadius: number;
+  wanderSpeed: number;
   threatMode: ThreatMode;
   threatStrength: number;
   threatRadius: number;
@@ -53,6 +55,8 @@ export const defaultSettings: MurmurationSettings = {
   inertia: 0.72,
   noise: 0.08,
   flow: 0.35,
+  wanderRadius: 0.32,
+  wanderSpeed: 0.62,
   threatMode: "off",
   threatStrength: 0,
   threatRadius: 0.18,
@@ -120,6 +124,8 @@ export const clampSettings = (
   inertia: Math.min(1, Math.max(0, settings.inertia)),
   noise: Math.min(1, Math.max(0, settings.noise)),
   flow: Math.min(2, Math.max(0, settings.flow)),
+  wanderRadius: Math.min(1, Math.max(0, settings.wanderRadius)),
+  wanderSpeed: Math.min(2, Math.max(0.05, settings.wanderSpeed)),
   threatStrength: Math.min(1, Math.max(0, settings.threatStrength)),
   threatRadius: Math.min(0.6, Math.max(0.05, settings.threatRadius)),
   waveGain: Math.min(2, Math.max(0, settings.waveGain)),

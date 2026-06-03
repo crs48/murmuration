@@ -9,7 +9,7 @@ import type { SimulationStepInput } from "../simulation/types";
 
 const workgroupSize = 128;
 const particleStrideBytes = 16;
-const simUniformFloats = 20;
+const simUniformFloats = 24;
 const renderUniformFloats = 40;
 
 const velocityShader = `
@@ -19,6 +19,7 @@ struct SimUniforms {
   params2: vec4<f32>,
   threat: vec4<f32>,
   params3: vec4<f32>,
+  params4: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: SimUniforms;
@@ -35,6 +36,16 @@ fn cyclicWeight(value: f32, center: f32) -> f32 {
   let wrappedDistance = min(distanceToCenter, 1.0 - distanceToCenter);
   let weight = max(0.0, 1.0 - wrappedDistance * 7.5);
   return weight * weight;
+}
+
+fn flockWanderCenter(time: f32, radius: f32, speed: f32) -> vec3<f32> {
+  let t = time * speed;
+
+  return radius * vec3<f32>(
+    sin(t * 0.37) * 0.62 + sin(t * 0.91 + 1.4) * 0.22,
+    sin(t * 0.43 + 0.8) * 0.38 + cos(t * 0.77 + 2.2) * 0.16,
+    cos(t * 0.31 + 0.5) * 0.34 + sin(t * 0.69 + 2.2) * 0.18
+  );
 }
 
 @compute @workgroup_size(${workgroupSize})
@@ -65,32 +76,36 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
   let waveGain = u.params3.y;
   let vacuoleStrength = u.params3.z;
   let splitGain = u.params3.w;
-  let dist = max(0.0001, length(pos));
-  let radial = pos / dist;
+  let wanderRadius = u.params4.x;
+  let wanderSpeed = u.params4.y;
+  let flockCenter = flockWanderCenter(time, wanderRadius, wanderSpeed);
+  let fromCenter = pos - flockCenter;
+  let dist = max(0.0001, length(fromCenter));
+  let radial = fromCenter / dist;
   let blobA = vec3<f32>(
-    sin(time * 0.19) * 0.74,
-    sin(time * 0.31 + 0.8) * 0.48,
-    cos(time * 0.23) * 0.62
+    flockCenter.x + sin(time * 0.19) * 0.74,
+    flockCenter.y + sin(time * 0.31 + 0.8) * 0.48,
+    flockCenter.z + cos(time * 0.23) * 0.62
   );
   let blobB = vec3<f32>(
-    cos(time * 0.17 + 1.6) * 0.68,
-    sin(time * 0.37 + 2.1) * 0.54,
-    sin(time * 0.29 + 0.4) * 0.72
+    flockCenter.x + cos(time * 0.17 + 1.6) * 0.68,
+    flockCenter.y + sin(time * 0.37 + 2.1) * 0.54,
+    flockCenter.z + sin(time * 0.29 + 0.4) * 0.72
   );
   let blobC = vec3<f32>(
-    sin(time * 0.27 + 2.7) * 0.58,
-    cos(time * 0.21 + 1.2) * 0.42,
-    cos(time * 0.33 + 2.5) * 0.68
+    flockCenter.x + sin(time * 0.27 + 2.7) * 0.58,
+    flockCenter.y + cos(time * 0.21 + 1.2) * 0.42,
+    flockCenter.z + cos(time * 0.33 + 2.5) * 0.68
   );
   let blobD = vec3<f32>(
-    cos(time * 0.24 + 3.4) * 0.7,
-    sin(time * 0.33 + 0.6) * 0.5,
-    sin(time * 0.18 + 1.4) * 0.58
+    flockCenter.x + cos(time * 0.24 + 3.4) * 0.7,
+    flockCenter.y + sin(time * 0.33 + 0.6) * 0.5,
+    flockCenter.z + sin(time * 0.18 + 1.4) * 0.58
   );
   let blobE = vec3<f32>(
-    sin(time * 0.14 + 4.4) * 0.48,
-    sin(time * 0.47 + 2.3) * 0.62,
-    cos(time * 0.26 + 4.0) * 0.7
+    flockCenter.x + sin(time * 0.14 + 4.4) * 0.48,
+    flockCenter.y + sin(time * 0.47 + 2.3) * 0.62,
+    flockCenter.z + cos(time * 0.26 + 4.0) * 0.7
   );
   let phase = fract(
     seed * 3.71 +
@@ -185,6 +200,7 @@ struct SimUniforms {
   params2: vec4<f32>,
   threat: vec4<f32>,
   params3: vec4<f32>,
+  params4: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: SimUniforms;
@@ -679,6 +695,8 @@ export class WebgpuParticleLayer {
     this.simUniforms[17] = settings.waveGain;
     this.simUniforms[18] = settings.vacuoleStrength;
     this.simUniforms[19] = settings.splitGain;
+    this.simUniforms[20] = settings.wanderRadius;
+    this.simUniforms[21] = settings.wanderSpeed;
     this.device.queue.writeBuffer(this.simUniformBuffer, 0, this.simUniforms);
   };
 

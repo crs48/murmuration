@@ -53,6 +53,8 @@ uniform float uAlignment;
 uniform float uCohesion;
 uniform float uNoise;
 uniform float uFlow;
+uniform float uWanderRadius;
+uniform float uWanderSpeed;
 uniform float uThreatEnabled;
 uniform vec3 uThreatPosition;
 uniform float uThreatStrength;
@@ -74,35 +76,47 @@ float cyclicWeight(float value, float center) {
   return weight * weight;
 }
 
+vec3 flockWanderCenter(float time) {
+  float t = time * uWanderSpeed;
+
+  return uWanderRadius * vec3(
+    sin(t * 0.37) * 0.62 + sin(t * 0.91 + 1.4) * 0.22,
+    sin(t * 0.43 + 0.8) * 0.38 + cos(t * 0.77 + 2.2) * 0.16,
+    cos(t * 0.31 + 0.5) * 0.34 + sin(t * 0.69 + 2.2) * 0.18
+  );
+}
+
 void main() {
   vec3 pos = texture2D(uPositionTexture, vUv).xyz;
   vec3 vel = texture2D(uVelocityTexture, vUv).xyz;
   float seed = hash(vUv);
-  float dist = max(0.0001, length(pos));
+  vec3 flockCenter = flockWanderCenter(uTime);
+  vec3 fromCenter = pos - flockCenter;
+  float dist = max(0.0001, length(fromCenter));
   vec3 blobA = vec3(
-    sin(uTime * 0.19) * 0.74,
-    sin(uTime * 0.31 + 0.8) * 0.48,
-    cos(uTime * 0.23) * 0.62
+    flockCenter.x + sin(uTime * 0.19) * 0.74,
+    flockCenter.y + sin(uTime * 0.31 + 0.8) * 0.48,
+    flockCenter.z + cos(uTime * 0.23) * 0.62
   );
   vec3 blobB = vec3(
-    cos(uTime * 0.17 + 1.6) * 0.68,
-    sin(uTime * 0.37 + 2.1) * 0.54,
-    sin(uTime * 0.29 + 0.4) * 0.72
+    flockCenter.x + cos(uTime * 0.17 + 1.6) * 0.68,
+    flockCenter.y + sin(uTime * 0.37 + 2.1) * 0.54,
+    flockCenter.z + sin(uTime * 0.29 + 0.4) * 0.72
   );
   vec3 blobC = vec3(
-    sin(uTime * 0.27 + 2.7) * 0.58,
-    cos(uTime * 0.21 + 1.2) * 0.42,
-    cos(uTime * 0.33 + 2.5) * 0.68
+    flockCenter.x + sin(uTime * 0.27 + 2.7) * 0.58,
+    flockCenter.y + cos(uTime * 0.21 + 1.2) * 0.42,
+    flockCenter.z + cos(uTime * 0.33 + 2.5) * 0.68
   );
   vec3 blobD = vec3(
-    cos(uTime * 0.24 + 3.4) * 0.7,
-    sin(uTime * 0.33 + 0.6) * 0.5,
-    sin(uTime * 0.18 + 1.4) * 0.58
+    flockCenter.x + cos(uTime * 0.24 + 3.4) * 0.7,
+    flockCenter.y + sin(uTime * 0.33 + 0.6) * 0.5,
+    flockCenter.z + sin(uTime * 0.18 + 1.4) * 0.58
   );
   vec3 blobE = vec3(
-    sin(uTime * 0.14 + 4.4) * 0.48,
-    sin(uTime * 0.47 + 2.3) * 0.62,
-    cos(uTime * 0.26 + 4.0) * 0.7
+    flockCenter.x + sin(uTime * 0.14 + 4.4) * 0.48,
+    flockCenter.y + sin(uTime * 0.47 + 2.3) * 0.62,
+    flockCenter.z + cos(uTime * 0.26 + 4.0) * 0.7
   );
   float phase = fract(
     seed * 3.71 +
@@ -174,7 +188,7 @@ void main() {
   }
 
   float boundary = max(0.0, dist - 1.75) * 2.0;
-  acceleration += -normalize(pos) * boundary;
+  acceleration += -(fromCenter / dist) * boundary;
 
   vec3 nextVelocity = vel + acceleration * uDelta * uSpeed;
   float velocityLength = length(nextVelocity);
@@ -248,6 +262,8 @@ export class WebglGpuMurmurationSimulation {
       uCohesion: { value: 0 },
       uNoise: { value: 0 },
       uFlow: { value: 0 },
+      uWanderRadius: { value: 0 },
+      uWanderSpeed: { value: 0 },
       uThreatEnabled: { value: 0 },
       uThreatPosition: { value: [0, 0, 0] },
       uThreatStrength: { value: 0 },
@@ -384,6 +400,8 @@ export class WebglGpuMurmurationSimulation {
     this.velocityMaterial.uniforms.uCohesion.value = input.settings.cohesion;
     this.velocityMaterial.uniforms.uNoise.value = input.settings.noise;
     this.velocityMaterial.uniforms.uFlow.value = input.settings.flow;
+    this.velocityMaterial.uniforms.uWanderRadius.value = input.settings.wanderRadius;
+    this.velocityMaterial.uniforms.uWanderSpeed.value = input.settings.wanderSpeed;
     this.velocityMaterial.uniforms.uThreatEnabled.value = input.threatPosition ? 1 : 0;
     this.velocityMaterial.uniforms.uThreatPosition.value = input.threatPosition ?? [0, 0, 0];
     this.velocityMaterial.uniforms.uThreatStrength.value = input.settings.threatStrength;
