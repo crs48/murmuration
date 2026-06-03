@@ -48,4 +48,27 @@ describe("adaptiveQualityPatch", () => {
       ),
     ).toEqual({ count: 820 });
   });
+
+  it("stages repeated quality reductions before sustained low frame rate", () => {
+    const settings = cloneSettings();
+    const state = createAdaptiveQualityState();
+    settings.trailMode = "velocity";
+    settings.pixelRatioCap = 1.1;
+    settings.count = 1200;
+    const stats = { fps: 20, frameMs: 50, averageFrameMs: 50 };
+
+    expect(adaptiveQualityPatch(settings, stats, 3000, state)).toEqual({
+      trailMode: "off",
+    });
+    Object.assign(settings, { trailMode: "off" });
+
+    expect(adaptiveQualityPatch(settings, stats, 4800, state)).toEqual({
+      pixelRatioCap: 0.95,
+    });
+    Object.assign(settings, { pixelRatioCap: 0.75 });
+
+    expect(adaptiveQualityPatch(settings, stats, 6600, state)).toEqual({
+      count: 983,
+    });
+  });
 });

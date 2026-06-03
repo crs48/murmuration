@@ -725,9 +725,9 @@ Goal:
 - [ ] Water/cloud/fire modes do not exceed overdraw budgets before they are enabled in Quest 2 presets.
 - [ ] Quest 2 holds 72 FPS for 5 minutes in `Comfort Flight`.
 - [ ] Quest 2 holds 72 FPS for 5 minutes in the densest Quest 2 preset.
-- [ ] No avoidable `Float32Array` allocations occur in the hot VR frame path.
-- [ ] Adaptive quality reduces count/render scale before dropping below comfort frame rate for sustained periods.
-- [ ] Exiting XR returns cleanly to desktop preview.
+- [x] No avoidable `Float32Array` allocations occur in the hot VR frame path.
+- [x] Adaptive quality reduces count/render scale before dropping below comfort frame rate for sustained periods.
+- [x] Exiting XR returns cleanly to desktop preview.
 - [x] App handles missing WebXR support gracefully.
 - [x] App handles missing `gamepad` state gracefully.
 - [x] App handles one-controller mode gracefully.

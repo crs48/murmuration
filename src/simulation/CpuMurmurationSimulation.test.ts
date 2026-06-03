@@ -47,6 +47,33 @@ describe("CpuMurmurationSimulation", () => {
     expect(simulation.snapshot().positions.length).toBe(24);
   });
 
+  it("reuses hot-path typed-array buffers when the count is stable", () => {
+    const simulation = new CpuMurmurationSimulation({ seed: 6, initialCount: 96 });
+    const settings: MurmurationSettings = {
+      ...defaultSettings,
+      count: 96,
+      simulationMode: "cpu",
+    };
+    const before = simulation.snapshot();
+
+    for (let frame = 0; frame < 5; frame += 1) {
+      simulation.step({
+        dt: 1 / 60,
+        time: frame / 60,
+        settings,
+        threatPosition: null,
+      });
+    }
+
+    const after = simulation.snapshot();
+
+    expect(after.positions).toBe(before.positions);
+    expect(after.previousPositions).toBe(before.previousPositions);
+    expect(after.velocities).toBe(before.velocities);
+    expect(after.speeds).toBe(before.speeds);
+    expect(after.seeds).toBe(before.seeds);
+  });
+
   it("uses a finite high-count auto field path", () => {
     const simulation = new CpuMurmurationSimulation({ seed: 15, initialCount: 5000 });
     const buffers = simulation.step({
