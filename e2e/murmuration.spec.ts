@@ -172,10 +172,33 @@ test("keeps the scene responsive during camera movement", async ({ page }, testI
   await page.mouse.down();
   await page.mouse.move(620, 390);
   await page.mouse.up();
+  await page.mouse.down({ button: "right" });
+  await page.mouse.move(680, 410);
+  await page.mouse.up({ button: "right" });
   await page.mouse.wheel(0, 320);
   await page.waitForTimeout(800);
   await expect(page.getByTestId("hud")).toContainText("particles");
   await expectScreenshotHasInk(page, screenshotPath("camera-interaction"));
+});
+
+test("accepts mobile pinch zoom input", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "mobile-chromium");
+  await waitForScene(page);
+  const cdp = await page.context().newCDPSession(page);
+
+  await cdp.send("Input.synthesizePinchGesture", {
+    x: 196,
+    y: 360,
+    scaleFactor: 1.4,
+    relativeSpeed: 800,
+    gestureSourceType: "touch",
+  });
+  await page.waitForTimeout(800);
+  await expect(page.getByTestId("hud")).toContainText("particles");
+  await expectScreenshotHasInk(page, screenshotPath("mobile-pinch"), {
+    dark: 200,
+    bright: 4_000,
+  });
 });
 
 test("applies every preset and resizes the particle buffers", async ({ page }, testInfo) => {

@@ -603,7 +603,7 @@ gantt
 ## Validation Checklist ✅
 
 - [x] Verify the app renders a nonblank canvas at desktop and mobile viewport sizes.
-- [ ] Verify camera orbit, pan, wheel zoom, and pinch zoom.
+- [x] Verify camera orbit, pan, wheel zoom, and pinch zoom.
 - [x] Verify no UI text overlaps at narrow mobile widths.
 - [x] Verify the side panel can collapse or scroll without blocking the whole scene.
 - [x] Verify all presets produce visually distinct motion.
@@ -617,7 +617,7 @@ gantt
 - [x] Confirm black-on-white and white-on-black themes remain legible in screenshots.
 - [x] Confirm trails do not turn the simulation into a blurry smear.
 - [x] Confirm threat mode creates visible waves or voids without fragmenting the flock permanently.
-- [ ] Confirm local speed changes propagate through nearby particles.
+- [x] Confirm local speed changes propagate through nearby particles.
 - [x] Confirm particle positions remain bounded and do not accumulate NaNs.
 - [x] Run automated visual smoke tests with Playwright screenshots.
 - [x] Run unit tests for settings reducers, presets, CPU spatial hash, and simulation invariants.

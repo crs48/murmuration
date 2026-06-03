@@ -1,4 +1,5 @@
-import { defaultSettings } from "../app/settings";
+import { defaultSettings, type MurmurationSettings } from "../app/settings";
+import { writeBuffer3 } from "../math/vec3";
 import { CpuMurmurationSimulation } from "./CpuMurmurationSimulation";
 
 describe("CpuMurmurationSimulation", () => {
@@ -78,5 +79,71 @@ describe("CpuMurmurationSimulation", () => {
 
     expect(buffers.count).toBe(5000);
     expect([...buffers.positions].every(Number.isFinite)).toBe(true);
+  });
+
+  it("propagates a local threat speed change through nearby alignment", () => {
+    const control = new CpuMurmurationSimulation({ seed: 21, initialCount: 8 });
+    const threatened = new CpuMurmurationSimulation({ seed: 21, initialCount: 8 });
+    const settings: MurmurationSettings = {
+      ...defaultSettings,
+      count: 8,
+      speed: 1.8,
+      minSpeed: 0,
+      maxSpeed: 5,
+      neighborRadius: 0.36,
+      neighborCount: 7,
+      separation: 0,
+      alignment: 4,
+      cohesion: 0,
+      inertia: 0.2,
+      noise: 0,
+      flow: 0,
+      threatMode: "orbit",
+      threatStrength: 1,
+      threatRadius: 0.11,
+      waveGain: 2,
+      vacuoleStrength: 1,
+      splitGain: 0,
+    };
+
+    for (const simulation of [control, threatened]) {
+      const buffers = simulation.snapshot();
+
+      for (let index = 0; index < buffers.count; index += 1) {
+        writeBuffer3(buffers.positions, index, [index * 0.15, 0, 0]);
+        writeBuffer3(buffers.previousPositions, index, [index * 0.15, 0, 0]);
+        writeBuffer3(buffers.velocities, index, [0.35, 0, 0]);
+        buffers.speeds[index] = 0.35;
+      }
+    }
+
+    for (let frame = 0; frame < 6; frame += 1) {
+      control.step({
+        dt: 1 / 60,
+        time: 1 + frame / 60,
+        settings,
+        threatPosition: null,
+      });
+    }
+    threatened.step({
+      dt: 1 / 60,
+      time: 1,
+      settings,
+      threatPosition: [-0.05, 0, 0],
+    });
+
+    for (let frame = 1; frame < 6; frame += 1) {
+      threatened.step({
+        dt: 1 / 60,
+        time: 1 + frame / 60,
+        settings,
+        threatPosition: null,
+      });
+    }
+
+    const propagatedNeighborVelocity =
+      threatened.snapshot().velocities[3] - control.snapshot().velocities[3];
+
+    expect(Math.abs(propagatedNeighborVelocity)).toBeGreaterThan(0.001);
   });
 });
