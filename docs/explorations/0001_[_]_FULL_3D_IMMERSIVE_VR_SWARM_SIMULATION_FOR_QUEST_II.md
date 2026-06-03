@@ -690,19 +690,19 @@ Goal:
 - [x] Add a WebXR capability probe using `navigator.xr?.isSessionSupported("immersive-vr")`.
 - [x] Enable `renderer.xr.enabled`, configure XR reference space, framebuffer scale, and foveation before session start.
 - [x] Add a VR entry button through Three.js `VRButton` or a custom equivalent.
-- [ ] Split desktop `OrbitControls` from immersive `XrCameraRig`.
+- [x] Split desktop `OrbitControls` from immersive `XrCameraRig`.
 - [x] Add `SwarmPilotIntent` as the semantic input contract.
 - [x] Add an `XRControllerInputAdapter` that reads WebXR input sources and `gamepad` state.
-- [ ] Add desktop fallback input that emits the same `SwarmPilotIntent`.
+- [x] Add desktop fallback input that emits the same `SwarmPilotIntent`.
 - [x] Add `SwarmPilotRig` with core position, velocity, heading, radius, roll, and comfort limits.
-- [ ] Extend `SimulationStepInput` with a pilot/swarm-core field instead of passing only `threatPosition`.
-- [ ] Add pilot-aware force terms in `rules.ts`.
+- [x] Extend `SimulationStepInput` with a pilot/swarm-core field instead of passing only `threatPosition`.
+- [x] Add pilot-aware force terms in `rules.ts`.
 - [ ] Remove per-frame allocations from the CPU simulation path or isolate CPU simulation to low-count debug mode.
 - [x] Add `EnvironmentAdapter` and `ReferenceGrid` modules.
 - [x] Add wrapped fixed dot lattice rendering as the first spatial reference mode.
 - [ ] Add low-cost dust, air, and starlight medium presets.
 - [ ] Add medium parameters for drag, turbulence, wake response, point size, opacity, and color/theme behavior.
-- [ ] Add adaptive Quest 2 quality caps for particle counts, render scale, and medium complexity.
+- [x] Add adaptive Quest 2 quality caps for particle counts, render scale, and medium complexity.
 - [ ] Prototype WebGL2 GPGPU ping-pong textures for position/velocity updates.
 - [ ] Keep WebGPU exploration behind capability flags and outside the critical Quest 2 path until WebXR/WebGPU binding support is proven on device.
 - [ ] Add in-scene minimal VR UI for mode/preset feedback.

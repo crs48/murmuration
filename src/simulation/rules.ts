@@ -23,9 +23,16 @@ export type ForceContext = Readonly<{
   settings: MurmurationSettings;
   time: number;
   threatPosition: Vec3 | null;
+  pilot: ForcePilot | null;
 }>;
 
 export type ForceTerm = (context: ForceContext) => Vec3;
+
+export type ForcePilot = Readonly<{
+  corePosition: Vec3;
+  heading: Vec3;
+  radius: number;
+}>;
 
 export const composeForces =
   (terms: readonly ForceTerm[]): ForceTerm =>
@@ -165,12 +172,36 @@ export const threatForce: ForceTerm = (context) => {
   return add3(add3(push, split), wave);
 };
 
+export const pilotForce: ForceTerm = (context) => {
+  if (!context.pilot) {
+    return zero3;
+  }
+
+  const position = fromBuffer3(context.positions, context.index);
+  const toCore = sub3(context.pilot.corePosition, position);
+  const distance = length3(toCore);
+  const shellRadius = Math.max(0.42, context.pilot.radius);
+  const shellError = distance - shellRadius;
+  const shellPull =
+    distance === 0 ? zero3 : scale3(normalize3(toCore), shellError * 0.42);
+  const headingPull = scale3(
+    normalize3(context.pilot.heading),
+    context.settings.alignment * 0.12,
+  );
+
+  return add3(
+    scale3(shellPull, context.settings.cohesion),
+    headingPull,
+  );
+};
+
 export const murmurationForce = composeForces([
   separationForce,
   alignmentForce,
   cohesionForce,
   flowFieldForce,
   noiseForce,
+  pilotForce,
   threatForce,
   boundaryForce,
 ]);

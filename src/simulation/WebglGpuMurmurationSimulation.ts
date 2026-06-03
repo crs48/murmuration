@@ -67,6 +67,10 @@ uniform float uThreatRadius;
 uniform float uWaveGain;
 uniform float uVacuoleStrength;
 uniform float uSplitGain;
+uniform float uPilotEnabled;
+uniform vec3 uPilotPosition;
+uniform vec3 uPilotHeading;
+uniform float uPilotRadius;
 
 varying vec2 vUv;
 
@@ -178,7 +182,8 @@ void main() {
   vec3 vel = texture2D(uVelocityTexture, vUv).xyz;
   float seed = hash(vUv);
   float slot = floor(vUv.x * uTextureSide) + floor(vUv.y * uTextureSide) * uTextureSide;
-  vec3 flockCenter = flockWanderCenter(uTime);
+  vec3 autoFlockCenter = flockWanderCenter(uTime);
+  vec3 flockCenter = mix(autoFlockCenter, uPilotPosition, uPilotEnabled);
   vec3 fromCenter = pos - flockCenter;
   float dist = max(0.0001, length(fromCenter));
   vec3 blobA = vec3(
@@ -220,11 +225,12 @@ void main() {
   vec3 legacyTarget =
     (blobA * weightA + blobB * weightB + blobC * weightC + blobD * weightD + blobE * weightE) /
     weightTotal;
-  vec3 sharedDrift = normalize(vec3(
+  vec3 autoDrift = vec3(
     0.72 + sin(uTime * 0.09) * 0.16,
     sin(uTime * 0.13 + 0.7) * 0.22,
     0.08 + cos(uTime * 0.11 + 1.2) * 0.18
-  ));
+  );
+  vec3 sharedDrift = normalize(mix(autoDrift, uPilotHeading, uPilotEnabled));
   float groupCount = 7.0;
   float group = floor(seed * groupCount);
   float groupSeed = (group + 0.5) / groupCount;
@@ -247,9 +253,11 @@ void main() {
   float localDistance = max(0.0001, length(local));
   vec3 localDirection = local / localDistance;
   float blobRadius =
-    0.24 +
-    (0.5 + 0.5 * sin(seed * 41.0 + uTime * 0.29)) * 0.16 +
-    sin(phase * 6.2831 + uTime * 0.17) * 0.05;
+    (
+      0.24 +
+      (0.5 + 0.5 * sin(seed * 41.0 + uTime * 0.29)) * 0.16 +
+      sin(phase * 6.2831 + uTime * 0.17) * 0.05
+    ) * mix(1.0, uPilotRadius, uPilotEnabled);
   float shellError = localDistance - blobRadius;
   vec3 axis = normalize(vec3(
     sin(uTime * 0.13 + seed * 7.0),
@@ -327,7 +335,7 @@ void main() {
     }
   }
 
-  float boundary = max(0.0, dist - 1.75) * 2.0;
+  float boundary = max(0.0, dist - 1.75 * mix(1.0, uPilotRadius, uPilotEnabled)) * 2.0;
   acceleration += -(fromCenter / dist) * boundary;
 
   vec3 nextVelocity = vel + acceleration * uDelta * uSpeed;
@@ -416,6 +424,10 @@ export class WebglGpuMurmurationSimulation {
       uWaveGain: { value: 0 },
       uVacuoleStrength: { value: 0 },
       uSplitGain: { value: 0 },
+      uPilotEnabled: { value: 0 },
+      uPilotPosition: { value: [0, 0, 0] },
+      uPilotHeading: { value: [0, 0, -1] },
+      uPilotRadius: { value: 1 },
     },
   });
 
@@ -559,6 +571,10 @@ export class WebglGpuMurmurationSimulation {
     this.velocityMaterial.uniforms.uWaveGain.value = input.settings.waveGain;
     this.velocityMaterial.uniforms.uVacuoleStrength.value = input.settings.vacuoleStrength;
     this.velocityMaterial.uniforms.uSplitGain.value = input.settings.splitGain;
+    this.velocityMaterial.uniforms.uPilotEnabled.value = input.pilot ? 1 : 0;
+    this.velocityMaterial.uniforms.uPilotPosition.value = input.pilot?.corePosition ?? [0, 0, 0];
+    this.velocityMaterial.uniforms.uPilotHeading.value = input.pilot?.heading ?? [0, 0, -1];
+    this.velocityMaterial.uniforms.uPilotRadius.value = input.pilot?.radius ?? 1;
     this.renderer.setRenderTarget(velocityTarget);
     this.renderer.render(this.scene, this.camera);
 

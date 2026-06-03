@@ -175,6 +175,56 @@ describe("CpuMurmurationSimulation", () => {
     expect(meanDelta).toBeGreaterThan(0.002);
   });
 
+  it("biases the high-count field path toward a pilot core", () => {
+    const control = new CpuMurmurationSimulation({ seed: 52, initialCount: 1300 });
+    const piloted = new CpuMurmurationSimulation({ seed: 52, initialCount: 1300 });
+    const settings: MurmurationSettings = {
+      ...defaultSettings,
+      count: 1300,
+      simulationMode: "auto",
+      cohesion: 2.2,
+      alignment: 1.2,
+    };
+
+    for (let frame = 0; frame < 24; frame += 1) {
+      const time = frame / 60;
+      control.step({
+        dt: 1 / 60,
+        time,
+        settings,
+        threatPosition: null,
+      });
+      piloted.step({
+        dt: 1 / 60,
+        time,
+        settings,
+        threatPosition: null,
+        pilot: {
+          corePosition: [1, 0, 0],
+          coreVelocity: [0, 0, 0],
+          heading: [1, 0, 0],
+          radius: 1,
+          roll: 0,
+          mediumPulse: 0,
+        },
+      });
+    }
+
+    const controlPositions = control.snapshot().positions;
+    const pilotedPositions = piloted.snapshot().positions;
+    const meanX = (positions: Float32Array) => {
+      let total = 0;
+
+      for (let index = 0; index < positions.length; index += 3) {
+        total += positions[index];
+      }
+
+      return total / (positions.length / 3);
+    };
+
+    expect(meanX(pilotedPositions)).toBeGreaterThan(meanX(controlPositions) + 0.02);
+  });
+
   it("propagates a local threat speed change through nearby alignment", () => {
     const control = new CpuMurmurationSimulation({ seed: 21, initialCount: 8 });
     const threatened = new CpuMurmurationSimulation({ seed: 21, initialCount: 8 });

@@ -15,6 +15,16 @@ export type SimulationStepInput = Readonly<{
   time: number;
   settings: MurmurationSettings;
   threatPosition: Vec3 | null;
+  pilot?: SimulationPilot | null;
+}>;
+
+export type SimulationPilot = Readonly<{
+  corePosition: Vec3;
+  coreVelocity: Vec3;
+  heading: Vec3;
+  radius: number;
+  roll: number;
+  mediumPulse: number;
 }>;
 
 export type SimulationAdapter = Readonly<{
@@ -23,4 +33,3 @@ export type SimulationAdapter = Readonly<{
   snapshot: () => ParticleBuffers;
   dispose: () => void;
 }>;
-

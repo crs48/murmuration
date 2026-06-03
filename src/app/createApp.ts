@@ -30,7 +30,11 @@ import {
   type PointerThreat,
 } from "../simulation/threat";
 import { createXrControllerRig } from "../xr/createXrControllerRig";
+import { createXrCameraRig } from "../xr/createXrCameraRig";
+import { createDesktopPilotIntent } from "../xr/desktopPilotIntent";
 import { createXrSessionButton } from "../xr/createXrSessionButton";
+import { createSwarmPilotRig } from "../xr/swarmPilotRig";
+import { quest2XrQualityPatch } from "../xr/xrQuality";
 
 export type MurmurationApp = Readonly<{
   dispose: () => void;
@@ -80,6 +84,9 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     rendererRig.renderer,
     rendererRig.scene,
   );
+  const xrCameraRig = createXrCameraRig(rendererRig.renderer, cameraRig);
+  const desktopPilotIntent = createDesktopPilotIntent(window);
+  const swarmPilot = createSwarmPilotRig();
   const pointerThreat: PointerThreat = {
     active: false,
     position: [0, 0, 0],
@@ -160,6 +167,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
 
   const updateHud = (): void => {
     const { fps, averageFrameMs } = stats.snapshot();
+    const pilot = swarmPilot.snapshot();
     const simulationBackend = selectSimulationBackend(
       settings,
       capability,
@@ -179,6 +187,8 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       <span>${capability.webglGpgpu.isSupported ? "gpgpu ready" : "gpgpu unavailable"}</span>
       <span>${webgpuStatusLabel(webgpuStatus)}</span>
       <span>${rendererRig.renderer.xr.isPresenting ? "immersive vr" : xrSessionButton.isImmersiveVrSupported() ? "vr ready" : "desktop"}</span>
+      <span>${Math.hypot(...pilot.coreVelocity).toFixed(2)} core</span>
+      <span>${pilot.radius.toFixed(2)} radius</span>
     `;
   };
 
@@ -204,7 +214,21 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     coercePaneSettings(settings, clampSettings(settings));
     resize();
     updateTheme();
-    cameraRig.controls.update();
+    xrCameraRig.update();
+    const xrQualityPatch = quest2XrQualityPatch(
+      settings,
+      xrCameraRig.isPresenting(),
+    );
+
+    if (Object.keys(xrQualityPatch).length > 0) {
+      Object.assign(settings, xrQualityPatch);
+      pane.refresh();
+    }
+
+    const pilotIntent = xrCameraRig.isPresenting()
+      ? xrControllerRig.intent()
+      : desktopPilotIntent.intent();
+    const pilot = swarmPilot.step({ dt, intent: pilotIntent });
     const threatPosition = deriveThreatPosition(
       settings,
       now / 1000,
@@ -216,7 +240,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       webgpuStatus,
     );
     referenceGrid.update({
-      center: [0, 0, 0],
+      center: pilot.corePosition,
       settings,
       pixelRatio: rendererRig.pixelRatio(),
     });
@@ -234,6 +258,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
           time: now / 1000,
           settings,
           threatPosition,
+          pilot,
         },
         cameraRig.camera,
         theme.ink,
@@ -251,6 +276,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
         time: now / 1000,
         settings,
         threatPosition,
+        pilot,
       });
       gpuParticles.update(gpuState, settings, rendererRig.pixelRatio());
       gpuParticles.points.visible = true;
@@ -263,6 +289,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
         time: now / 1000,
         settings,
         threatPosition,
+        pilot,
       });
       trails.update(buffers, settings);
       particles.update(buffers, settings, rendererRig.pixelRatio());
@@ -322,6 +349,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       accumulation.dispose();
       xrSessionButton.dispose();
       xrControllerRig.dispose();
+      desktopPilotIntent.dispose();
       cameraRig.dispose();
       rendererRig.dispose();
       simulation.dispose();

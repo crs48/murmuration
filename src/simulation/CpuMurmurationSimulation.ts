@@ -240,6 +240,14 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
     const maxDistanceSq = settings.neighborRadius * settings.neighborRadius;
     const neighborCount = Math.min(settings.neighborCount, this.topIndices.length);
     const minSpeed = Math.min(settings.minSpeed, settings.maxSpeed);
+    const pilot = input.pilot ?? null;
+    const pilotX = pilot?.corePosition[0] ?? 0;
+    const pilotY = pilot?.corePosition[1] ?? 0;
+    const pilotZ = pilot?.corePosition[2] ?? 0;
+    const pilotHeadingX = pilot?.heading[0] ?? 0;
+    const pilotHeadingY = pilot?.heading[1] ?? 0;
+    const pilotHeadingZ = pilot?.heading[2] ?? 0;
+    const pilotRadius = pilot?.radius ?? 1;
 
     previousPositions.set(positions);
 
@@ -396,8 +404,11 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
       const noiseX = Math.sin(seed + noiseT * 1.17);
       const noiseY = Math.sin(seed * 1.31 + noiseT * 1.41);
       const noiseZ = Math.cos(seed * 0.73 - noiseT * 1.23);
-      const distanceFromCenter = Math.hypot(px, py, pz);
-      const boundaryAmount = Math.max(0, distanceFromCenter - 1.45) * 1.6;
+      const fromPilotX = px - pilotX;
+      const fromPilotY = py - pilotY;
+      const fromPilotZ = pz - pilotZ;
+      const distanceFromCenter = Math.hypot(fromPilotX, fromPilotY, fromPilotZ);
+      const boundaryAmount = Math.max(0, distanceFromCenter - 1.45 * pilotRadius) * 1.6;
       const blackening = 1 + settings.blackeningGain * threatProximity * 0.85;
       let ax =
         sepX * settings.separation * (2 - blackening) * foundInv +
@@ -421,10 +432,16 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
         noiseZ * settings.noise * 0.18 +
         threatZ;
 
+      if (pilot) {
+        ax += (pilotX - px) * settings.cohesion * 0.22 + pilotHeadingX * settings.alignment * 0.16;
+        ay += (pilotY - py) * settings.cohesion * 0.22 + pilotHeadingY * settings.alignment * 0.16;
+        az += (pilotZ - pz) * settings.cohesion * 0.22 + pilotHeadingZ * settings.alignment * 0.16;
+      }
+
       if (boundaryAmount > 0 && distanceFromCenter > 0) {
-        ax += (-px / distanceFromCenter) * boundaryAmount;
-        ay += (-py / distanceFromCenter) * boundaryAmount;
-        az += (-pz / distanceFromCenter) * boundaryAmount;
+        ax += (-fromPilotX / distanceFromCenter) * boundaryAmount;
+        ay += (-fromPilotY / distanceFromCenter) * boundaryAmount;
+        az += (-fromPilotZ / distanceFromCenter) * boundaryAmount;
       }
 
       const acceleratedX = vx + ax * dt * settings.speed;
@@ -470,10 +487,15 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
     const { count, positions, previousPositions, velocities, speeds, seeds } = this.buffers;
     const { nextPositions, nextVelocities } = this;
     const minSpeed = Math.min(settings.minSpeed, settings.maxSpeed);
-    const [flockCenterX, flockCenterY, flockCenterZ] = flockWanderCenter(
+    const autoFlockCenter = flockWanderCenter(
       settings,
       input.time,
     );
+    const pilot = input.pilot ?? null;
+    const flockCenterX = pilot?.corePosition[0] ?? autoFlockCenter[0];
+    const flockCenterY = pilot?.corePosition[1] ?? autoFlockCenter[1];
+    const flockCenterZ = pilot?.corePosition[2] ?? autoFlockCenter[2];
+    const pilotRadius = pilot?.radius ?? 1;
 
     previousPositions.set(positions);
 
@@ -555,9 +577,9 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
           blobD[2] * weightD +
           blobE[2] * weightE) /
         weightTotal;
-      const driftX = 0.72 + Math.sin(input.time * 0.09) * 0.16;
-      const driftY = Math.sin(input.time * 0.13 + 0.7) * 0.22;
-      const driftZ = 0.08 + Math.cos(input.time * 0.11 + 1.2) * 0.18;
+      const driftX = pilot?.heading[0] ?? 0.72 + Math.sin(input.time * 0.09) * 0.16;
+      const driftY = pilot?.heading[1] ?? Math.sin(input.time * 0.13 + 0.7) * 0.22;
+      const driftZ = pilot?.heading[2] ?? 0.08 + Math.cos(input.time * 0.11 + 1.2) * 0.18;
       const driftLength = Math.max(0.0001, Math.hypot(driftX, driftY, driftZ));
       const driftSpeed = 0.28 + settings.flow * 0.12 + settings.cohesion * 0.03;
       const driftVelocityX = (driftX / driftLength) * driftSpeed;
@@ -623,9 +645,10 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
       const localDirectionY = localY / localDistance;
       const localDirectionZ = localZ / localDistance;
       const blobRadius =
-        0.24 +
-        (0.5 + 0.5 * Math.sin(unitSeed * 41 + input.time * 0.29)) * 0.16 +
-        Math.sin(phase * Math.PI * 2 + input.time * 0.17) * 0.05;
+        (0.24 +
+          (0.5 + 0.5 * Math.sin(unitSeed * 41 + input.time * 0.29)) * 0.16 +
+          Math.sin(phase * Math.PI * 2 + input.time * 0.17) * 0.05) *
+        pilotRadius;
       const shellError = localDistance - blobRadius;
       const axisX = Math.sin(input.time * 0.13 + unitSeed * 7);
       const axisY = 0.72 + Math.sin(input.time * 0.19 + unitSeed * 3) * 0.28;
@@ -839,7 +862,7 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
         }
       }
 
-      const boundaryAmount = Math.max(0, distance - 1.75) * 2.0;
+      const boundaryAmount = Math.max(0, distance - 1.75 * pilotRadius) * 2.0;
 
       if (boundaryAmount > 0) {
         ax += (-fromCenterX / distance) * boundaryAmount;
