@@ -13,6 +13,7 @@ export type VrStatusPanelUpdate = Readonly<{
   presetName: PresetName;
   mediumMode: MediumMode;
   simulationLabel: string;
+  profileLabel: string;
   fps: number;
   count: number;
   radius: number;
@@ -100,7 +101,11 @@ export class VrStatusPanel {
     context.fillText(update.presetName, 34, 60);
     context.font = "600 25px Inter, system-ui, sans-serif";
     context.fillStyle = "rgba(255, 255, 255, 0.74)";
-    context.fillText(`${update.simulationLabel} · ${update.mediumMode}`, 34, 100);
+    context.fillText(
+      `${update.simulationLabel} · ${update.mediumMode} · ${update.profileLabel}`,
+      34,
+      100,
+    );
     context.font = "700 31px Inter, system-ui, sans-serif";
     context.fillStyle = "rgba(255, 255, 255, 0.9)";
     context.fillText(`${Math.round(update.fps)} fps`, 34, 158);

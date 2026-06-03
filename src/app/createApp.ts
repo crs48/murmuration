@@ -17,6 +17,10 @@ import {
   createAdaptiveQualityState,
 } from "../diagnostics/adaptiveQuality";
 import { createCapabilityReport } from "../diagnostics/capabilityReport";
+import {
+  classifyPerformanceBottleneck,
+  performanceBottleneckLabel,
+} from "../diagnostics/performanceProfile";
 import { ReferenceGrid } from "../environment/referenceGrid";
 import { ParticleCloud } from "../rendering/ParticleCloud";
 import { GpuParticleCloud } from "../rendering/GpuParticleCloud";
@@ -191,6 +195,14 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       simulationBackend,
       settings.simulationMode,
     );
+    const profileLabel = performanceBottleneckLabel(
+      classifyPerformanceBottleneck({
+        settings,
+        stats: stats.snapshot(),
+        backend: simulationBackend,
+        isXrPresenting: rendererRig.renderer.xr.isPresenting,
+      }),
+    );
 
     hud.innerHTML = `
       <span>${Math.round(fps)} fps</span>
@@ -203,12 +215,14 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       <span>${rendererRig.renderer.xr.isPresenting ? "immersive vr" : xrSessionButton.isImmersiveVrSupported() ? "vr ready" : "desktop"}</span>
       <span>${Math.hypot(...pilot.coreVelocity).toFixed(2)} core</span>
       <span>${pilot.radius.toFixed(2)} radius</span>
+      <span>${profileLabel}</span>
     `;
     vrStatusPanel.update({
       isPresenting: rendererRig.renderer.xr.isPresenting,
       presetName: selectedPreset,
       mediumMode: settings.mediumMode,
       simulationLabel,
+      profileLabel,
       fps,
       count: settings.count,
       radius: pilot.radius,

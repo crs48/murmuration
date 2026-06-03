@@ -732,7 +732,7 @@ Goal:
 - [x] App handles missing `gamepad` state gracefully.
 - [x] App handles one-controller mode gracefully.
 - [x] Tests cover controller intent reduction, pilot rig integration, medium presets, and simulation input clamping.
-- [ ] Profiling distinguishes CPU-bound, vertex-bound, and fragment-bound cases.
+- [x] Profiling distinguishes CPU-bound, vertex-bound, and fragment-bound cases.
 
 ## Example Code
 
