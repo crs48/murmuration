@@ -621,7 +621,7 @@ gantt
 - [x] Confirm particle positions remain bounded and do not accumulate NaNs.
 - [x] Run automated visual smoke tests with Playwright screenshots.
 - [x] Run unit tests for settings reducers, presets, CPU spatial hash, and simulation invariants.
-- [ ] Run a long soak test for at least 10 minutes with adaptive quality enabled.
+- [x] Run a long soak test for at least 10 minutes with adaptive quality enabled.
 
 ## Example Code
 
