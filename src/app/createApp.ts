@@ -1,4 +1,8 @@
-import { cloneSettings, clampSettings } from "./settings";
+import {
+  cloneSettings,
+  clampSettings,
+  type MurmurationSettings,
+} from "./settings";
 import { exportSettings, importSettings } from "./presetSerialization";
 import type { MurmurationDebugApi } from "./debugApi";
 import {
@@ -59,6 +63,14 @@ const createElement = <TagName extends keyof HTMLElementTagNameMap>(
   element.className = className;
   return element;
 };
+
+const cameraScaledAttractorSettings = (
+  settings: MurmurationSettings,
+  attractorScale: number,
+): MurmurationSettings => ({
+  ...settings,
+  attractorRadius: settings.attractorRadius * attractorScale,
+});
 
 export const createApp = (root: HTMLElement): MurmurationApp => {
   const settings = cloneSettings();
@@ -287,6 +299,10 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       capability,
       webgpuStatus,
     );
+    const simulationSettings = cameraScaledAttractorSettings(
+      settings,
+      cameraRig.attractorScale(),
+    );
     referenceGrid.update({
       center: pilot.corePosition,
       settings,
@@ -309,7 +325,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
         {
           dt,
           time: now / 1000,
-          settings,
+          settings: simulationSettings,
           threatPosition,
           pilot,
         },
@@ -327,7 +343,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       const gpuState = gpuSimulation.step({
         dt,
         time: now / 1000,
-        settings,
+        settings: simulationSettings,
         threatPosition,
         pilot,
       });
@@ -340,7 +356,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       const buffers = simulation.step({
         dt,
         time: now / 1000,
-        settings,
+        settings: simulationSettings,
         threatPosition,
         pilot,
       });

@@ -1,11 +1,13 @@
 import { PerspectiveCamera, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { MurmurationSettings } from "../app/settings";
+import { attractorViewScale } from "./attractorViewScale";
 
 export type CameraRig = Readonly<{
   camera: PerspectiveCamera;
   controls: OrbitControls;
   resize: (settings: MurmurationSettings) => void;
+  attractorScale: () => number;
   reset: () => void;
   dispose: () => void;
 }>;
@@ -46,8 +48,13 @@ export const createCameraRig = (
       controls.autoRotate = currentSettings.autoOrbit;
       controls.autoRotateSpeed = 0.45;
     },
+    attractorScale: () =>
+      attractorViewScale({
+        distance: camera.position.distanceTo(controls.target),
+        fovDegrees: camera.fov,
+        aspect: camera.aspect,
+      }),
     reset,
     dispose: () => controls.dispose(),
   };
 };
-

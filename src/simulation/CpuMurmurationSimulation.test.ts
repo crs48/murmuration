@@ -1,6 +1,7 @@
 import { defaultSettings, type MurmurationSettings } from "../app/settings";
 import { writeBuffer3 } from "../math/vec3";
 import { CpuMurmurationSimulation } from "./CpuMurmurationSimulation";
+import { flockWanderCenter } from "./flockWander";
 
 describe("CpuMurmurationSimulation", () => {
   it("initializes deterministic typed-array particle buffers", () => {
@@ -158,6 +159,86 @@ describe("CpuMurmurationSimulation", () => {
 
     expect(buffers.count).toBe(5000);
     expect([...buffers.positions].every(Number.isFinite)).toBe(true);
+  });
+
+  it("biases the low-count CPU path toward the autonomous attractor", () => {
+    const control = new CpuMurmurationSimulation({ seed: 28, initialCount: 8 });
+    const attracted = new CpuMurmurationSimulation({ seed: 28, initialCount: 8 });
+    const settings: MurmurationSettings = {
+      ...defaultSettings,
+      count: 8,
+      simulationMode: "cpu",
+      speed: 1,
+      minSpeed: 0,
+      maxSpeed: 5,
+      neighborRadius: 0.02,
+      separation: 0,
+      alignment: 0,
+      cohesion: 3,
+      noise: 0,
+      flow: 0,
+      chaseStrength: 1,
+      attractorRadius: 1.8,
+      attractorSpeed: 1,
+      wanderRadius: 1,
+      wanderSpeed: 1,
+    };
+
+    for (const simulation of [control, attracted]) {
+      const buffers = simulation.snapshot();
+
+      for (let index = 0; index < buffers.count; index += 1) {
+        writeBuffer3(buffers.positions, index, [0, 0, 0]);
+        writeBuffer3(buffers.previousPositions, index, [0, 0, 0]);
+        writeBuffer3(buffers.velocities, index, [0, 0, 0]);
+        buffers.speeds[index] = 0;
+      }
+    }
+
+    const startTime = 6;
+    const target = flockWanderCenter(settings, startTime);
+    const targetLength = Math.hypot(...target);
+    const direction = [
+      target[0] / targetLength,
+      target[1] / targetLength,
+      target[2] / targetLength,
+    ] as const;
+    const meanProjection = (positions: Float32Array): number => {
+      let total = 0;
+
+      for (let index = 0; index < positions.length; index += 3) {
+        total +=
+          positions[index] * direction[0] +
+          positions[index + 1] * direction[1] +
+          positions[index + 2] * direction[2];
+      }
+
+      return total / (positions.length / 3);
+    };
+
+    for (let frame = 0; frame < 12; frame += 1) {
+      const time = startTime + frame / 60;
+
+      control.step({
+        dt: 1 / 60,
+        time,
+        settings: {
+          ...settings,
+          attractorRadius: 0,
+        },
+        threatPosition: null,
+      });
+      attracted.step({
+        dt: 1 / 60,
+        time,
+        settings,
+        threatPosition: null,
+      });
+    }
+
+    expect(meanProjection(attracted.snapshot().positions)).toBeGreaterThan(
+      meanProjection(control.snapshot().positions) + 0.001,
+    );
   });
 
   it("uses chase strength to alter high-count lobe following", () => {

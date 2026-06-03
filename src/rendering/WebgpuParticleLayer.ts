@@ -47,19 +47,21 @@ fn flockWanderCenter(
   attractorRadius: f32
 ) -> vec3<f32> {
   let t = time * attractorSpeed * legacySpeed;
-  let travel = vec3<f32>(
-    sin(t * 0.31 + sin(t * 0.17) * 0.8) * 0.68 +
-      sin(t * 0.83 + 1.4) * 0.24 +
-      sin(t * 0.11 + 2.8) * 0.08,
-    sin(t * 0.37 + 0.8) * 0.62 +
-      cos(t * 0.73 + 2.2) * 0.26 +
-      sin(t * 0.19 + 0.5) * 0.12,
-    cos(t * 0.29 + 0.5) * 0.64 +
-      sin(t * 0.67 + 2.2) * 0.26 +
-      cos(t * 0.13 + 1.1) * 0.1
+  let raw = vec3<f32>(
+    sin(t * 0.47 + sin(t * 0.19) * 1.15) * 0.82 +
+      sin(t * 1.07 + 1.4) * 0.38 +
+      cos(t * 0.23 + 2.1) * 0.22,
+    cos(t * 0.43 + 0.6 + sin(t * 0.13) * 0.9) * 0.78 +
+      sin(t * 0.91 + 2.8) * 0.42 +
+      cos(t * 0.29 + 0.4) * 0.24,
+    sin(t * 0.39 + 1.1 + cos(t * 0.17) * 1.05) * 0.8 +
+      cos(t * 0.97 + 0.2) * 0.4 +
+      sin(t * 0.21 + 2.6) * 0.22
   );
+  let radialPulse = 0.72 + 0.28 * (0.5 + 0.5 * sin(t * 0.41 + cos(t * 0.17)));
+  let travel = raw * (radialPulse / max(1.0, length(raw)));
 
-  return attractorRadius * radius * vec3<f32>(travel.x, travel.y * 0.58, travel.z * 0.86);
+  return attractorRadius * radius * travel;
 }
 
 fn leaderAnchor(center: vec3<f32>, time: f32, groupSeed: f32) -> vec3<f32> {

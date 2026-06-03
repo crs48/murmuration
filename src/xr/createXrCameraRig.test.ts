@@ -15,6 +15,7 @@ describe("createXrCameraRig", () => {
       camera: {} as never,
       controls: controls as never,
       resize: vi.fn(),
+      attractorScale: vi.fn(() => 1),
       reset: vi.fn(),
       dispose: vi.fn(),
     });

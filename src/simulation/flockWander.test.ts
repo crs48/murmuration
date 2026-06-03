@@ -11,7 +11,7 @@ describe("flockWanderCenter", () => {
     ).toEqual([0, 0, 0]);
   });
 
-  it("keeps the moving midpoint inside a camera-friendly volume", () => {
+  it("keeps the moving midpoint inside the attractor sphere", () => {
     const samples = Array.from({ length: 240 }, (_, index) =>
       flockWanderCenter(
         {
@@ -25,9 +25,32 @@ describe("flockWanderCenter", () => {
       ),
     );
 
-    expect(Math.max(...samples.map(([x]) => Math.abs(x)))).toBeLessThan(1.05);
-    expect(Math.max(...samples.map(([, y]) => Math.abs(y)))).toBeLessThan(0.65);
-    expect(Math.max(...samples.map(([, , z]) => Math.abs(z)))).toBeLessThan(0.95);
+    expect(
+      Math.max(...samples.map((point) => Math.hypot(...point))),
+    ).toBeLessThanOrEqual(1.0001);
+  });
+
+  it("uses meaningful travel on every axis", () => {
+    const samples = Array.from({ length: 240 }, (_, index) =>
+      flockWanderCenter(
+        {
+          ...defaultSettings,
+          attractorRadius: 1,
+          attractorSpeed: 1,
+          wanderRadius: 1,
+          wanderSpeed: 1,
+        },
+        index * 0.5,
+      ),
+    );
+
+    expect(Math.max(...samples.map(([x]) => Math.abs(x)))).toBeGreaterThan(0.7);
+    expect(Math.max(...samples.map(([, y]) => Math.abs(y)))).toBeGreaterThan(
+      0.7,
+    );
+    expect(Math.max(...samples.map(([, , z]) => Math.abs(z)))).toBeGreaterThan(
+      0.7,
+    );
   });
 
   it("changes destination over time more aggressively at higher attractor speed", () => {

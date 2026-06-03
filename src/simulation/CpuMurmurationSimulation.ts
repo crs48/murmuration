@@ -241,13 +241,33 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
     const neighborCount = Math.min(settings.neighborCount, this.topIndices.length);
     const minSpeed = Math.min(settings.minSpeed, settings.maxSpeed);
     const pilot = input.pilot ?? null;
-    const pilotX = pilot?.corePosition[0] ?? 0;
-    const pilotY = pilot?.corePosition[1] ?? 0;
-    const pilotZ = pilot?.corePosition[2] ?? 0;
-    const pilotHeadingX = pilot?.heading[0] ?? 0;
-    const pilotHeadingY = pilot?.heading[1] ?? 0;
-    const pilotHeadingZ = pilot?.heading[2] ?? 0;
+    const autoFlockCenter = flockWanderCenter(settings, input.time);
+    const nextAutoFlockCenter = flockWanderCenter(settings, input.time + 0.75);
+    const autoHeadingX = nextAutoFlockCenter[0] - autoFlockCenter[0];
+    const autoHeadingY = nextAutoFlockCenter[1] - autoFlockCenter[1];
+    const autoHeadingZ = nextAutoFlockCenter[2] - autoFlockCenter[2];
+    const autoHeadingDistance = Math.hypot(
+      autoHeadingX,
+      autoHeadingY,
+      autoHeadingZ,
+    );
+    const inverseAutoHeadingDistance =
+      autoHeadingDistance > 0.0001 ? 1 / autoHeadingDistance : 0;
+    const hasAutoAttractor =
+      settings.attractorRadius > 0 && settings.wanderRadius > 0;
+    const hasCore = Boolean(pilot) || hasAutoAttractor;
+    const pilotX = pilot?.corePosition[0] ?? autoFlockCenter[0];
+    const pilotY = pilot?.corePosition[1] ?? autoFlockCenter[1];
+    const pilotZ = pilot?.corePosition[2] ?? autoFlockCenter[2];
+    const pilotHeadingX =
+      pilot?.heading[0] ?? autoHeadingX * inverseAutoHeadingDistance;
+    const pilotHeadingY =
+      pilot?.heading[1] ?? autoHeadingY * inverseAutoHeadingDistance;
+    const pilotHeadingZ =
+      pilot?.heading[2] ?? autoHeadingZ * inverseAutoHeadingDistance;
     const pilotRadius = pilot?.radius ?? 1;
+    const coreFollow = pilot ? 0.22 : settings.chaseStrength * 0.16;
+    const headingFollow = pilot ? 0.16 : settings.chaseStrength * 0.1;
 
     previousPositions.set(positions);
 
@@ -432,10 +452,16 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
         noiseZ * settings.noise * 0.18 +
         threatZ;
 
-      if (pilot) {
-        ax += (pilotX - px) * settings.cohesion * 0.22 + pilotHeadingX * settings.alignment * 0.16;
-        ay += (pilotY - py) * settings.cohesion * 0.22 + pilotHeadingY * settings.alignment * 0.16;
-        az += (pilotZ - pz) * settings.cohesion * 0.22 + pilotHeadingZ * settings.alignment * 0.16;
+      if (hasCore) {
+        ax +=
+          (pilotX - px) * settings.cohesion * coreFollow +
+          pilotHeadingX * settings.alignment * headingFollow;
+        ay +=
+          (pilotY - py) * settings.cohesion * coreFollow +
+          pilotHeadingY * settings.alignment * headingFollow;
+        az +=
+          (pilotZ - pz) * settings.cohesion * coreFollow +
+          pilotHeadingZ * settings.alignment * headingFollow;
       }
 
       if (boundaryAmount > 0 && distanceFromCenter > 0) {
