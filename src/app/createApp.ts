@@ -28,6 +28,7 @@ import {
   deriveThreatPosition,
   type PointerThreat,
 } from "../simulation/threat";
+import { createXrSessionButton } from "../xr/createXrSessionButton";
 
 export type MurmurationApp = Readonly<{
   dispose: () => void;
@@ -71,6 +72,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   const stats = createFrameStatsTracker();
   const adaptiveQuality = createAdaptiveQualityState();
   const capability = createCapabilityReport(rendererRig.renderer);
+  const xrSessionButton = createXrSessionButton(rendererRig.renderer, host);
   const pointerThreat: PointerThreat = {
     active: false,
     position: [0, 0, 0],
@@ -82,7 +84,6 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       Object.assign(settings, importSettings(source));
     },
   });
-  let animationId = 0;
   let disposed = false;
   let lastNow = performance.now();
   let lastHudUpdate = 0;
@@ -164,6 +165,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       <span>${capability.rendererBackend}</span>
       <span>${capability.webglGpgpu.isSupported ? "gpgpu ready" : "gpgpu unavailable"}</span>
       <span>${webgpuStatusLabel(webgpuStatus)}</span>
+      <span>${rendererRig.renderer.xr.isPresenting ? "immersive vr" : xrSessionButton.isImmersiveVrSupported() ? "vr ready" : "desktop"}</span>
     `;
   };
 
@@ -277,7 +279,6 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       updateHud();
     }
 
-    animationId = window.requestAnimationFrame(frame);
   };
 
   updateTheme();
@@ -285,12 +286,12 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   window.addEventListener("resize", resize);
   sceneHost.addEventListener("pointermove", updatePointerThreat);
   sceneHost.addEventListener("pointerleave", clearPointerThreat);
-  animationId = window.requestAnimationFrame(frame);
+  rendererRig.renderer.setAnimationLoop(frame);
 
   return {
     dispose: () => {
       disposed = true;
-      window.cancelAnimationFrame(animationId);
+      rendererRig.renderer.setAnimationLoop(null);
       window.removeEventListener("resize", resize);
       sceneHost.removeEventListener("pointermove", updatePointerThreat);
       sceneHost.removeEventListener("pointerleave", clearPointerThreat);
@@ -300,6 +301,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       webgpuLayer?.dispose();
       trails.dispose();
       accumulation.dispose();
+      xrSessionButton.dispose();
       cameraRig.dispose();
       rendererRig.dispose();
       simulation.dispose();

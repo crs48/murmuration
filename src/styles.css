@@ -114,6 +114,10 @@ body {
   white-space: nowrap;
 }
 
+.xr-session-button {
+  z-index: 3;
+}
+
 @media (max-width: 760px) {
   .pane-host {
     top: auto;

@@ -686,10 +686,10 @@ Goal:
 
 ## Implementation Checklist
 
-- [ ] Convert the app loop from `window.requestAnimationFrame` to `renderer.setAnimationLoop()` while preserving desktop behavior.
-- [ ] Add a WebXR capability probe using `navigator.xr?.isSessionSupported("immersive-vr")`.
-- [ ] Enable `renderer.xr.enabled`, configure XR reference space, framebuffer scale, and foveation before session start.
-- [ ] Add a VR entry button through Three.js `VRButton` or a custom equivalent.
+- [x] Convert the app loop from `window.requestAnimationFrame` to `renderer.setAnimationLoop()` while preserving desktop behavior.
+- [x] Add a WebXR capability probe using `navigator.xr?.isSessionSupported("immersive-vr")`.
+- [x] Enable `renderer.xr.enabled`, configure XR reference space, framebuffer scale, and foveation before session start.
+- [x] Add a VR entry button through Three.js `VRButton` or a custom equivalent.
 - [ ] Split desktop `OrbitControls` from immersive `XrCameraRig`.
 - [ ] Add `SwarmPilotIntent` as the semantic input contract.
 - [ ] Add an `XRControllerInputAdapter` that reads WebXR input sources and `gamepad` state.
