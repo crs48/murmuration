@@ -69,6 +69,7 @@ export const createPane = (
     },
   });
   visual.addBinding(settings, "particleScale", { min: 0.2, max: 4, step: 0.01 });
+  visual.addBinding(settings, "depthScale", { min: 0, max: 2, step: 0.01 });
   visual.addBinding(settings, "depthFade", { min: 0, max: 1, step: 0.01 });
   visual.addBinding(settings, "trailMode", {
     options: {

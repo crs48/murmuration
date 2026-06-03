@@ -165,6 +165,7 @@ test("renders a nonblank desktop murmuration scene", async ({ page }, testInfo) 
   await expect(page.getByTestId("settings-panel")).toContainText("chaseStrength");
   await expect(page.getByTestId("settings-panel")).toContainText("Attractor");
   await expect(page.getByTestId("settings-panel")).toContainText("attractorRadius");
+  await expect(page.getByTestId("settings-panel")).toContainText("depthScale");
   await expect(page.getByTestId("settings-panel")).toContainText("trailMode");
   await expectScreenshotHasInk(page, screenshotPath("desktop-scene"));
 });

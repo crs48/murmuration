@@ -30,6 +30,7 @@ export type MurmurationSettings = Readonly<{
   splitGain: number;
   blackeningGain: number;
   particleScale: number;
+  depthScale: number;
   depthFade: number;
   trailMode: TrailMode;
   trailLength: number;
@@ -71,6 +72,7 @@ export const defaultSettings: MurmurationSettings = {
   splitGain: 0,
   blackeningGain: 0.25,
   particleScale: 1.32,
+  depthScale: 1,
   depthFade: 0.42,
   trailMode: "off",
   trailLength: 0.34,
@@ -142,6 +144,7 @@ export const clampSettings = (
   splitGain: Math.min(1, Math.max(0, settings.splitGain)),
   blackeningGain: Math.min(1, Math.max(0, settings.blackeningGain)),
   particleScale: Math.min(4, Math.max(0.2, settings.particleScale)),
+  depthScale: Math.min(2, Math.max(0, settings.depthScale)),
   depthFade: Math.min(1, Math.max(0, settings.depthFade)),
   trailLength: Math.min(2, Math.max(0, settings.trailLength)),
   trailOpacity: Math.min(1, Math.max(0, settings.trailOpacity)),

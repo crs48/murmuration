@@ -340,7 +340,13 @@ fn vertexMain(
   let vel = velocities[instanceIndex].xyz;
   let cameraDistance = max(0.35, length(pos - u.cameraPosition.xyz));
   let speed01 = smoothstep(0.0, 3.2, length(vel));
-  let worldSize = u.params.y * u.cameraRight.w * (0.75 + speed01 * 0.2) * sqrt(cameraDistance);
+  let depthResponse = pow(max(0.25, cameraDistance / 3.2), u.params.z - 1.0);
+  let worldSize =
+    u.params.y *
+    u.cameraRight.w *
+    (0.75 + speed01 * 0.2) *
+    sqrt(cameraDistance) /
+    depthResponse;
   let worldPosition =
     pos + (u.cameraRight.xyz * corner.x + u.cameraUp.xyz * corner.y) * worldSize;
   var out: VertexOut;
@@ -815,7 +821,7 @@ export class WebgpuParticleLayer {
     this.renderUniforms[35] = 1;
     this.renderUniforms[36] = settings.trailOpacity;
     this.renderUniforms[37] = 0.006;
-    this.renderUniforms[38] = this.width;
+    this.renderUniforms[38] = settings.depthScale;
     this.renderUniforms[39] = this.height;
     this.device.queue.writeBuffer(
       this.renderUniformBuffer,

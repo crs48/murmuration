@@ -17,6 +17,7 @@ uniform sampler2D uPositionTexture;
 uniform sampler2D uVelocityTexture;
 uniform float uParticleScale;
 uniform float uPixelRatio;
+uniform float uDepthScale;
 
 varying float vDepth01;
 varying float vSpeed01;
@@ -29,7 +30,8 @@ void main() {
   vDepth01 = smoothstep(0.0, 4.8, depth);
   vSpeed01 = smoothstep(0.0, 3.2, length(velocitySample));
   gl_Position = projectionMatrix * modelViewPosition;
-  gl_PointSize = clamp(uParticleScale * uPixelRatio * (28.0 / depth), 1.5, 38.0);
+  float depthSize = 8.75 / pow(max(0.25, depth / 3.2), uDepthScale);
+  gl_PointSize = clamp(uParticleScale * uPixelRatio * depthSize, 1.5, 38.0);
 }
 `;
 
@@ -85,6 +87,7 @@ export class GpuParticleCloud {
         uVelocityTexture: { value: null },
         uParticleScale: { value: settings.particleScale },
         uPixelRatio: { value: Math.min(window.devicePixelRatio, settings.pixelRatioCap) },
+        uDepthScale: { value: settings.depthScale },
         uDepthFade: { value: settings.depthFade },
         uTrailOpacity: { value: settings.trailOpacity },
       },
@@ -106,6 +109,7 @@ export class GpuParticleCloud {
     this.material.uniforms.uVelocityTexture.value = state.velocityTexture;
     this.material.uniforms.uParticleScale.value = settings.particleScale;
     this.material.uniforms.uPixelRatio.value = pixelRatio;
+    this.material.uniforms.uDepthScale.value = settings.depthScale;
     this.material.uniforms.uDepthFade.value = settings.depthFade;
     this.material.uniforms.uTrailOpacity.value = settings.trailOpacity;
     this.geometry.setDrawRange(0, state.count);
@@ -137,4 +141,3 @@ export class GpuParticleCloud {
     this.geometry.setAttribute("reference", new BufferAttribute(references, 2));
   };
 }
-
