@@ -62,4 +62,21 @@ describe("CpuMurmurationSimulation", () => {
     expect([...buffers.positions].every(Number.isFinite)).toBe(true);
     expect([...buffers.velocities].every(Number.isFinite)).toBe(true);
   });
+
+  it("falls back to the high-count field path for unsupported GPU modes", () => {
+    const simulation = new CpuMurmurationSimulation({ seed: 19, initialCount: 5000 });
+    const buffers = simulation.step({
+      dt: 1 / 60,
+      time: 2,
+      settings: {
+        ...defaultSettings,
+        count: 5000,
+        simulationMode: "webgpu",
+      },
+      threatPosition: null,
+    });
+
+    expect(buffers.count).toBe(5000);
+    expect([...buffers.positions].every(Number.isFinite)).toBe(true);
+  });
 });

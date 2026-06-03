@@ -113,7 +113,7 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
       this.resize(settings.count);
     }
 
-    if (settings.simulationMode === "auto" && settings.count > gridSimulationLimit) {
+    if (settings.simulationMode !== "cpu" && settings.count > gridSimulationLimit) {
       return this.stepField(input, dt);
     }
 

@@ -87,7 +87,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   const updateHud = (): void => {
     const { fps, averageFrameMs } = stats.snapshot();
     const simulationLabel =
-      settings.simulationMode === "auto" && settings.count > gridSimulationLimit
+      settings.simulationMode !== "cpu" && settings.count > gridSimulationLimit
         ? "cpu-field"
         : "cpu-grid";
     hud.innerHTML = `
