@@ -30,17 +30,17 @@ export const initialParticlePosition = (
 
 export const initialParticleVelocity = (
   random: () => number,
-  position: Vec3,
+  _position: Vec3,
 ): Vec3 => {
-  const tangent: Vec3 = [
-    -position[2] + randomSigned(random) * 0.25,
-    randomSigned(random) * 0.55,
-    position[0] + randomSigned(random) * 0.25,
+  const drift: Vec3 = [
+    0.34 + randomSigned(random) * 0.08,
+    randomSigned(random) * 0.16,
+    0.08 + randomSigned(random) * 0.08,
   ];
 
   return [
-    tangent[0] * 0.62 + randomSigned(random) * 0.14,
-    tangent[1] * 0.62 + randomSigned(random) * 0.14,
-    tangent[2] * 0.62 + randomSigned(random) * 0.14,
+    drift[0] + randomSigned(random) * 0.05,
+    drift[1] + randomSigned(random) * 0.05,
+    drift[2] + randomSigned(random) * 0.05,
   ];
 };

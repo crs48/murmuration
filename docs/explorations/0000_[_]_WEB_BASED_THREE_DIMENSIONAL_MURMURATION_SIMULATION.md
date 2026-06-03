@@ -589,6 +589,7 @@ gantt
 - [x] Add Reynolds force terms: separation, alignment, cohesion, speed clamp, and boundary steering.
 - [x] Add low-frequency flow field for sheet folding and undulation.
 - [x] Add bounded flock midpoint wandering so the volume drifts through the viewport instead of orbiting around screen center.
+- [x] Add an adjustable leader/chaser loop breaker so particles form staggered organic lobes instead of one continuous path.
 - [x] Add threat field modes: cursor, orbiting, and autonomous.
 - [x] Add threat response terms for wave, vacuole, split, blackening, and flash expansion.
 - [x] Render particles with a custom point or impostor shader.

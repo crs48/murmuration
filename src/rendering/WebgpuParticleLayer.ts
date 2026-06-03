@@ -48,6 +48,16 @@ fn flockWanderCenter(time: f32, radius: f32, speed: f32) -> vec3<f32> {
   );
 }
 
+fn leaderAnchor(center: vec3<f32>, time: f32, groupSeed: f32) -> vec3<f32> {
+  let phase = groupSeed * 6.2831853;
+
+  return center + vec3<f32>(
+    cos(phase + time * 0.21) * 0.5 + sin(time * 0.13 + phase * 2.3) * 0.16,
+    sin(phase * 1.7 + time * 0.19) * 0.34 + cos(time * 0.11 + phase) * 0.12,
+    sin(phase + time * 0.16) * 0.46 + cos(time * 0.23 + phase * 1.4) * 0.14
+  );
+}
+
 @compute @workgroup_size(${workgroupSize})
 fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
   let index = globalId.x;
@@ -78,6 +88,7 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
   let splitGain = u.params3.w;
   let wanderRadius = u.params4.x;
   let wanderSpeed = u.params4.y;
+  let chaseStrength = u.params4.z;
   let flockCenter = flockWanderCenter(time, wanderRadius, wanderSpeed);
   let fromCenter = pos - flockCenter;
   let dist = max(0.0001, length(fromCenter));
@@ -118,9 +129,44 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
   let weightD = cyclicWeight(phase, 0.6);
   let weightE = cyclicWeight(phase, 0.8);
   let weightTotal = max(0.0001, weightA + weightB + weightC + weightD + weightE);
-  let blobTarget =
+  let legacyTarget =
     (blobA * weightA + blobB * weightB + blobC * weightC + blobD * weightD + blobE * weightE) /
     weightTotal;
+  let sharedDrift = normalize(vec3<f32>(
+    0.72 + sin(time * 0.09) * 0.16,
+    sin(time * 0.13 + 0.7) * 0.22,
+    0.08 + cos(time * 0.11 + 1.2) * 0.18
+  ));
+  let groupCount = 7.0;
+  let group = floor(seed * groupCount);
+  let groupSeed = (group + 0.5) / groupCount;
+  let leaderLag = hash(seed + 9.17) * (1.1 + chaseStrength * 2.4);
+  let rawNeighborGroup = group + 1.0 + floor(hash(seed + 4.2) * 3.0);
+  let neighborGroup = rawNeighborGroup - floor(rawNeighborGroup / groupCount) * groupCount;
+  let neighborSeed = (neighborGroup + 0.5) / groupCount;
+  let primaryAnchor = leaderAnchor(flockCenter, time - leaderLag, groupSeed);
+  let secondaryAnchor = leaderAnchor(flockCenter, time - leaderLag * 1.7 - 0.8, neighborSeed);
+  let role = hash(seed + 5.91);
+  let secondaryMix = 0.16 + hash(seed + 6.24) * 0.28;
+  let leaderMix = select(0.0, 0.62, role >= 0.84);
+  let offsetTheta = hash(seed + 1.23) * 6.2831853;
+  let offsetY = hash(seed + 2.34) * 2.0 - 1.0;
+  let offsetRing = sqrt(max(0.0, 1.0 - offsetY * offsetY));
+  let offsetBreath = 1.0 + sin(time * 0.31 + seed * 21.0) * 0.14;
+  let offsetRadius =
+    (0.1 + pow(hash(seed + 3.45), 0.3333) * 0.34) *
+    (0.72 + chaseStrength * 0.36) *
+    offsetBreath;
+  let followerTarget =
+    mix(primaryAnchor, secondaryAnchor, secondaryMix) +
+    vec3<f32>(
+      cos(offsetTheta) * offsetRing * offsetRadius,
+      offsetY * offsetRadius,
+      sin(offsetTheta) * offsetRing * offsetRadius
+    );
+  let leaderTarget = flockCenter + sharedDrift * (0.18 + hash(seed + 7.1) * 0.18);
+  let chaseTarget = mix(followerTarget, leaderTarget, leaderMix);
+  let blobTarget = mix(legacyTarget, chaseTarget, chaseStrength);
   let local = pos - blobTarget;
   let localDistance = max(0.0001, length(local));
   let localDirection = local / localDistance;
@@ -147,11 +193,20 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
   let buoyancy =
     sin(localDistance * 8.0 - time * 1.1 + seed * 17.0) * 0.09 +
     (blobTarget.y - pos.y) * 0.24;
+  let driftVelocity = sharedDrift * (0.28 + flow * 0.12 + cohesion * 0.03);
+  let shellInfluence = 1.0 - chaseStrength;
+  let targetPull = 0.24 + chaseStrength * 0.38;
+  let driftPull = 0.16 + chaseStrength * 0.06;
+  let tangentPull = 0.035 * shellInfluence;
+  let viscousDrag = chaseStrength * (0.08 + flow * 0.02);
+  let flowPull = 0.035 + chaseStrength * 0.015;
   var acceleration =
-    -localDirection * shellError * cohesion * 1.35 +
-    (blobTarget - pos) * cohesion * 0.22 +
-    (tangent / tangentLength) * alignment * 0.18 +
-    fold * flow * 0.085 +
+    -localDirection * shellError * cohesion * 1.35 * shellInfluence +
+    (blobTarget - pos) * cohesion * targetPull +
+    (driftVelocity - vel) * alignment * driftPull -
+    vel * viscousDrag +
+    (tangent / tangentLength) * alignment * tangentPull +
+    fold * flow * flowPull +
     vec3<f32>(0.0, buoyancy * (0.75 + flow * 0.25), 0.0) +
     vec3<f32>(
       sin(seed * 100.0 + time * 1.7),
@@ -697,6 +752,7 @@ export class WebgpuParticleLayer {
     this.simUniforms[19] = settings.splitGain;
     this.simUniforms[20] = settings.wanderRadius;
     this.simUniforms[21] = settings.wanderSpeed;
+    this.simUniforms[22] = settings.chaseStrength;
     this.device.queue.writeBuffer(this.simUniformBuffer, 0, this.simUniforms);
   };
 

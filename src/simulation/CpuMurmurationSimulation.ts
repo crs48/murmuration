@@ -31,6 +31,33 @@ const cyclicWeight = (value: number, center: number): number => {
   return weight * weight;
 };
 
+const fract = (value: number): number => value - Math.floor(value);
+
+const shaderHash = (seed: number): number =>
+  fract(Math.sin(seed * 12.9898) * 43758.5453);
+
+const leaderAnchor = (
+  centerX: number,
+  centerY: number,
+  centerZ: number,
+  time: number,
+  groupSeed: number,
+): readonly [number, number, number] => {
+  const phase = groupSeed * Math.PI * 2;
+
+  return [
+    centerX +
+      Math.cos(phase + time * 0.21) * 0.5 +
+      Math.sin(time * 0.13 + phase * 2.3) * 0.16,
+    centerY +
+      Math.sin(phase * 1.7 + time * 0.19) * 0.34 +
+      Math.cos(time * 0.11 + phase) * 0.12,
+    centerZ +
+      Math.sin(phase + time * 0.16) * 0.46 +
+      Math.cos(time * 0.23 + phase * 1.4) * 0.14,
+  ];
+};
+
 export class CpuMurmurationSimulation implements SimulationAdapter {
   private random = mulberry32(17);
 
@@ -406,27 +433,88 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
         0.0001,
         weightA + weightB + weightC + weightD + weightE,
       );
-      const targetX =
+      const legacyTargetX =
         (blobA[0] * weightA +
           blobB[0] * weightB +
           blobC[0] * weightC +
           blobD[0] * weightD +
           blobE[0] * weightE) /
         weightTotal;
-      const targetY =
+      const legacyTargetY =
         (blobA[1] * weightA +
           blobB[1] * weightB +
           blobC[1] * weightC +
           blobD[1] * weightD +
           blobE[1] * weightE) /
         weightTotal;
-      const targetZ =
+      const legacyTargetZ =
         (blobA[2] * weightA +
           blobB[2] * weightB +
           blobC[2] * weightC +
           blobD[2] * weightD +
           blobE[2] * weightE) /
         weightTotal;
+      const driftX = 0.72 + Math.sin(input.time * 0.09) * 0.16;
+      const driftY = Math.sin(input.time * 0.13 + 0.7) * 0.22;
+      const driftZ = 0.08 + Math.cos(input.time * 0.11 + 1.2) * 0.18;
+      const driftLength = Math.max(0.0001, Math.hypot(driftX, driftY, driftZ));
+      const driftSpeed = 0.28 + settings.flow * 0.12 + settings.cohesion * 0.03;
+      const driftVelocityX = (driftX / driftLength) * driftSpeed;
+      const driftVelocityY = (driftY / driftLength) * driftSpeed;
+      const driftVelocityZ = (driftZ / driftLength) * driftSpeed;
+      const groupCount = 7;
+      const group = Math.floor(unitSeed * groupCount);
+      const groupSeed = (group + 0.5) / groupCount;
+      const leaderLag = shaderHash(unitSeed + 9.17) * (1.1 + settings.chaseStrength * 2.4);
+      const neighborGroup =
+        (group + 1 + Math.floor(shaderHash(unitSeed + 4.2) * 3)) % groupCount;
+      const neighborSeed = (neighborGroup + 0.5) / groupCount;
+      const primaryAnchor = leaderAnchor(
+        flockCenterX,
+        flockCenterY,
+        flockCenterZ,
+        input.time - leaderLag,
+        groupSeed,
+      );
+      const secondaryAnchor = leaderAnchor(
+        flockCenterX,
+        flockCenterY,
+        flockCenterZ,
+        input.time - leaderLag * 1.7 - 0.8,
+        neighborSeed,
+      );
+      const role = shaderHash(unitSeed + 5.91);
+      const secondaryMix = 0.16 + shaderHash(unitSeed + 6.24) * 0.28;
+      const leaderMix = role > 0.84 ? 0.62 : 0;
+      const offsetTheta = shaderHash(unitSeed + 1.23) * Math.PI * 2;
+      const offsetY = shaderHash(unitSeed + 2.34) * 2 - 1;
+      const offsetRing = Math.sqrt(Math.max(0, 1 - offsetY * offsetY));
+      const offsetBreath = 1 + Math.sin(input.time * 0.31 + unitSeed * 21) * 0.14;
+      const offsetRadius =
+        (0.1 + Math.cbrt(shaderHash(unitSeed + 3.45)) * 0.34) *
+        (0.72 + settings.chaseStrength * 0.36) *
+        offsetBreath;
+      const followerTargetX =
+        lerp(primaryAnchor[0], secondaryAnchor[0], secondaryMix) +
+        Math.cos(offsetTheta) * offsetRing * offsetRadius;
+      const followerTargetY =
+        lerp(primaryAnchor[1], secondaryAnchor[1], secondaryMix) +
+        offsetY * offsetRadius;
+      const followerTargetZ =
+        lerp(primaryAnchor[2], secondaryAnchor[2], secondaryMix) +
+        Math.sin(offsetTheta) * offsetRing * offsetRadius;
+      const leaderTargetX =
+        flockCenterX + (driftX / driftLength) * (0.18 + shaderHash(unitSeed + 7.1) * 0.18);
+      const leaderTargetY =
+        flockCenterY + (driftY / driftLength) * (0.08 + shaderHash(unitSeed + 8.1) * 0.16);
+      const leaderTargetZ =
+        flockCenterZ + (driftZ / driftLength) * (0.18 + shaderHash(unitSeed + 9.1) * 0.18);
+      const chaseTargetX = lerp(followerTargetX, leaderTargetX, leaderMix);
+      const chaseTargetY = lerp(followerTargetY, leaderTargetY, leaderMix);
+      const chaseTargetZ = lerp(followerTargetZ, leaderTargetZ, leaderMix);
+      const targetX = lerp(legacyTargetX, chaseTargetX, settings.chaseStrength);
+      const targetY = lerp(legacyTargetY, chaseTargetY, settings.chaseStrength);
+      const targetZ = lerp(legacyTargetZ, chaseTargetZ, settings.chaseStrength);
       const localX = px - targetX;
       const localY = py - targetY;
       const localZ = pz - targetZ;
@@ -468,24 +556,36 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
       const buoyancy =
         Math.sin(localDistance * 8 - input.time * 1.1 + unitSeed * 17) * 0.09 +
         (targetY - py) * 0.24;
+      const shellInfluence = 1 - settings.chaseStrength;
+      const targetPull = 0.24 + settings.chaseStrength * 0.38;
+      const driftPull = 0.16 + settings.chaseStrength * 0.06;
+      const tangentPull = 0.035 * shellInfluence;
+      const viscousDrag = settings.chaseStrength * (0.08 + settings.flow * 0.02);
+      const flowPull = 0.035 + settings.chaseStrength * 0.015;
       let ax =
-        -localDirectionX * shellError * settings.cohesion * 1.35 +
-        (targetX - px) * settings.cohesion * 0.22 +
-        (tangentX / tangentLength) * settings.alignment * 0.18 +
-        foldX * settings.flow * 0.085 +
+        -localDirectionX * shellError * settings.cohesion * 1.35 * shellInfluence +
+        (targetX - px) * settings.cohesion * targetPull +
+        (driftVelocityX - vx) * settings.alignment * driftPull -
+        vx * viscousDrag +
+        (tangentX / tangentLength) * settings.alignment * tangentPull +
+        foldX * settings.flow * flowPull +
         Math.sin(seed + input.time * 1.7) * settings.noise * 0.16;
       let ay =
-        -localDirectionY * shellError * settings.cohesion * 1.35 +
-        (targetY - py) * settings.cohesion * 0.22 +
-        (tangentY / tangentLength) * settings.alignment * 0.18 +
-        foldY * settings.flow * 0.085 +
+        -localDirectionY * shellError * settings.cohesion * 1.35 * shellInfluence +
+        (targetY - py) * settings.cohesion * targetPull +
+        (driftVelocityY - vy) * settings.alignment * driftPull -
+        vy * viscousDrag +
+        (tangentY / tangentLength) * settings.alignment * tangentPull +
+        foldY * settings.flow * flowPull +
         buoyancy * (0.75 + settings.flow * 0.25) +
         Math.cos(seed * 1.31 + input.time * 1.4) * settings.noise * 0.16;
       let az =
-        -localDirectionZ * shellError * settings.cohesion * 1.35 +
-        (targetZ - pz) * settings.cohesion * 0.22 +
-        (tangentZ / tangentLength) * settings.alignment * 0.18 +
-        foldZ * settings.flow * 0.085 +
+        -localDirectionZ * shellError * settings.cohesion * 1.35 * shellInfluence +
+        (targetZ - pz) * settings.cohesion * targetPull +
+        (driftVelocityZ - vz) * settings.alignment * driftPull -
+        vz * viscousDrag +
+        (tangentZ / tangentLength) * settings.alignment * tangentPull +
+        foldZ * settings.flow * flowPull +
         Math.cos(seed * 0.73 - input.time * 1.2) * settings.noise * 0.16;
 
       if (localDistance < blobRadius * 0.42) {

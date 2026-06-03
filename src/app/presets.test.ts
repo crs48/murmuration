@@ -19,6 +19,12 @@ describe("presets", () => {
     ).toBe(true);
   });
 
+  it("keeps every preset chase mix in the supported range", () => {
+    expect(
+      presets.every(({ settings }) => settings.chaseStrength >= 0 && settings.chaseStrength <= 1),
+    ).toBe(true);
+  });
+
   it("retrieves presets by name", () => {
     expect(presetByName("Predator Ripple").settings.threatMode).toBe("orbit");
   });

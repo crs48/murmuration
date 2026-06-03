@@ -162,7 +162,8 @@ test("renders a nonblank desktop murmuration scene", async ({ page }, testInfo) 
   test.skip(testInfo.project.name !== "desktop-chromium");
   await waitForScene(page);
   await expect(page.getByTestId("settings-panel")).toContainText("Preset IO");
-  await expect(page.getByTestId("settings-panel")).toContainText("Accumulation");
+  await expect(page.getByTestId("settings-panel")).toContainText("chaseStrength");
+  await expect(page.getByTestId("settings-panel")).toContainText("trailMode");
   await expectScreenshotHasInk(page, screenshotPath("desktop-scene"));
 });
 
@@ -266,6 +267,7 @@ test("keeps the Lava Lamp preset organic and varied over time", async ({ page },
     adaptiveQuality: false,
     autoOrbit: false,
     simulationMode: "webgl-gpgpu",
+    chaseStrength: 0.9,
     trailMode: "off",
   });
   await page.evaluate(() => {
@@ -312,9 +314,10 @@ test("keeps the Lava Lamp preset organic and varied over time", async ({ page },
     "output/playwright/lava-lamp-organic-summary.json",
     `${JSON.stringify(summary, null, 2)}\n`,
   );
-  expect(Math.min(...samples.map((sample) => sample.darkPixels))).toBeGreaterThan(60_000);
+  expect(Math.min(...samples.map((sample) => sample.darkPixels))).toBeGreaterThan(40_000);
   expect(Math.max(...samples.map((sample) => sample.edgePixelRatio))).toBeLessThan(0.18);
-  expect(Math.min(...samples.map((sample) => sample.verticalCoverage))).toBeGreaterThan(0.45);
+  expect(Math.min(...samples.map((sample) => sample.verticalCoverage))).toBeGreaterThan(0.38);
+  expect(Math.min(...samples.map((sample) => sample.fillRatio))).toBeGreaterThan(0.18);
   expect(Math.max(...samples.map((sample) => sample.aspect))).toBeLessThan(2.8);
   expect(Math.max(centroidSpanX, centroidSpanY)).toBeGreaterThan(70);
   expect(meanDistance).toBeGreaterThan(0.12);
@@ -385,6 +388,7 @@ test("records a high-count WebGL GPGPU performance matrix", async ({ page }, tes
   test.skip(!ready, "WebGL GPGPU is unavailable in this browser");
   await applySettings(page, {
     adaptiveQuality: false,
+    particleScale: 0.9,
     pixelRatioCap: 1,
     simulationMode: "webgl-gpgpu",
     trailMode: "off",

@@ -53,6 +53,7 @@ uniform float uAlignment;
 uniform float uCohesion;
 uniform float uNoise;
 uniform float uFlow;
+uniform float uChaseStrength;
 uniform float uWanderRadius;
 uniform float uWanderSpeed;
 uniform float uThreatEnabled;
@@ -83,6 +84,16 @@ vec3 flockWanderCenter(float time) {
     sin(t * 0.37) * 0.62 + sin(t * 0.91 + 1.4) * 0.22,
     sin(t * 0.43 + 0.8) * 0.38 + cos(t * 0.77 + 2.2) * 0.16,
     cos(t * 0.31 + 0.5) * 0.34 + sin(t * 0.69 + 2.2) * 0.18
+  );
+}
+
+vec3 leaderAnchor(vec3 center, float time, float groupSeed) {
+  float phase = groupSeed * 6.2831853;
+
+  return center + vec3(
+    cos(phase + time * 0.21) * 0.5 + sin(time * 0.13 + phase * 2.3) * 0.16,
+    sin(phase * 1.7 + time * 0.19) * 0.34 + cos(time * 0.11 + phase) * 0.12,
+    sin(phase + time * 0.16) * 0.46 + cos(time * 0.23 + phase * 1.4) * 0.14
   );
 }
 
@@ -129,9 +140,43 @@ void main() {
   float weightD = cyclicWeight(phase, 0.6);
   float weightE = cyclicWeight(phase, 0.8);
   float weightTotal = max(0.0001, weightA + weightB + weightC + weightD + weightE);
-  vec3 blobTarget =
+  vec3 legacyTarget =
     (blobA * weightA + blobB * weightB + blobC * weightC + blobD * weightD + blobE * weightE) /
     weightTotal;
+  vec3 sharedDrift = normalize(vec3(
+    0.72 + sin(uTime * 0.09) * 0.16,
+    sin(uTime * 0.13 + 0.7) * 0.22,
+    0.08 + cos(uTime * 0.11 + 1.2) * 0.18
+  ));
+  float groupCount = 7.0;
+  float group = floor(seed * groupCount);
+  float groupSeed = (group + 0.5) / groupCount;
+  float leaderLag = hash(vec2(seed, 9.17)) * (1.1 + uChaseStrength * 2.4);
+  float neighborGroup = mod(group + 1.0 + floor(hash(vec2(seed, 4.2)) * 3.0), groupCount);
+  float neighborSeed = (neighborGroup + 0.5) / groupCount;
+  vec3 primaryAnchor = leaderAnchor(flockCenter, uTime - leaderLag, groupSeed);
+  vec3 secondaryAnchor = leaderAnchor(flockCenter, uTime - leaderLag * 1.7 - 0.8, neighborSeed);
+  float role = hash(vec2(seed, 5.91));
+  float secondaryMix = 0.16 + hash(vec2(seed, 6.24)) * 0.28;
+  float leaderMix = step(0.84, role) * 0.62;
+  float offsetTheta = hash(vec2(seed, 1.23)) * 6.2831853;
+  float offsetY = hash(vec2(seed, 2.34)) * 2.0 - 1.0;
+  float offsetRing = sqrt(max(0.0, 1.0 - offsetY * offsetY));
+  float offsetBreath = 1.0 + sin(uTime * 0.31 + seed * 21.0) * 0.14;
+  float offsetRadius =
+    (0.1 + pow(hash(vec2(seed, 3.45)), 0.3333) * 0.34) *
+    (0.72 + uChaseStrength * 0.36) *
+    offsetBreath;
+  vec3 followerTarget =
+    mix(primaryAnchor, secondaryAnchor, secondaryMix) +
+    vec3(
+      cos(offsetTheta) * offsetRing * offsetRadius,
+      offsetY * offsetRadius,
+      sin(offsetTheta) * offsetRing * offsetRadius
+    );
+  vec3 leaderTarget = flockCenter + sharedDrift * (0.18 + hash(vec2(seed, 7.1)) * 0.18);
+  vec3 chaseTarget = mix(followerTarget, leaderTarget, leaderMix);
+  vec3 blobTarget = mix(legacyTarget, chaseTarget, uChaseStrength);
   vec3 local = pos - blobTarget;
   float localDistance = max(0.0001, length(local));
   vec3 localDirection = local / localDistance;
@@ -158,11 +203,20 @@ void main() {
   float buoyancy =
     sin(localDistance * 8.0 - uTime * 1.1 + seed * 17.0) * 0.09 +
     (blobTarget.y - pos.y) * 0.24;
+  vec3 driftVelocity = sharedDrift * (0.28 + uFlow * 0.12 + uCohesion * 0.03);
+  float shellInfluence = 1.0 - uChaseStrength;
+  float targetPull = 0.24 + uChaseStrength * 0.38;
+  float driftPull = 0.16 + uChaseStrength * 0.06;
+  float tangentPull = 0.035 * shellInfluence;
+  float viscousDrag = uChaseStrength * (0.08 + uFlow * 0.02);
+  float flowPull = 0.035 + uChaseStrength * 0.015;
   vec3 acceleration =
-    -localDirection * shellError * uCohesion * 1.35 +
-    (blobTarget - pos) * uCohesion * 0.22 +
-    (tangent / tangentLength) * uAlignment * 0.18 +
-    fold * uFlow * 0.085 +
+    -localDirection * shellError * uCohesion * 1.35 * shellInfluence +
+    (blobTarget - pos) * uCohesion * targetPull +
+    (driftVelocity - vel) * uAlignment * driftPull -
+    vel * viscousDrag +
+    (tangent / tangentLength) * uAlignment * tangentPull +
+    fold * uFlow * flowPull +
     vec3(0.0, buoyancy * (0.75 + uFlow * 0.25), 0.0) +
     vec3(
       sin(seed * 100.0 + uTime * 1.7),
@@ -262,6 +316,7 @@ export class WebglGpuMurmurationSimulation {
       uCohesion: { value: 0 },
       uNoise: { value: 0 },
       uFlow: { value: 0 },
+      uChaseStrength: { value: 0 },
       uWanderRadius: { value: 0 },
       uWanderSpeed: { value: 0 },
       uThreatEnabled: { value: 0 },
@@ -400,6 +455,7 @@ export class WebglGpuMurmurationSimulation {
     this.velocityMaterial.uniforms.uCohesion.value = input.settings.cohesion;
     this.velocityMaterial.uniforms.uNoise.value = input.settings.noise;
     this.velocityMaterial.uniforms.uFlow.value = input.settings.flow;
+    this.velocityMaterial.uniforms.uChaseStrength.value = input.settings.chaseStrength;
     this.velocityMaterial.uniforms.uWanderRadius.value = input.settings.wanderRadius;
     this.velocityMaterial.uniforms.uWanderSpeed.value = input.settings.wanderSpeed;
     this.velocityMaterial.uniforms.uThreatEnabled.value = input.threatPosition ? 1 : 0;

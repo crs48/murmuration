@@ -81,6 +81,48 @@ describe("CpuMurmurationSimulation", () => {
     expect([...buffers.positions].every(Number.isFinite)).toBe(true);
   });
 
+  it("uses chase strength to alter high-count lobe following", () => {
+    const lowChase = new CpuMurmurationSimulation({ seed: 31, initialCount: 1300 });
+    const highChase = new CpuMurmurationSimulation({ seed: 31, initialCount: 1300 });
+    const baseSettings: MurmurationSettings = {
+      ...defaultSettings,
+      count: 1300,
+      simulationMode: "auto",
+    };
+
+    for (let frame = 0; frame < 12; frame += 1) {
+      const time = 2 + frame / 60;
+      lowChase.step({
+        dt: 1 / 60,
+        time,
+        settings: {
+          ...baseSettings,
+          chaseStrength: 0,
+        },
+        threatPosition: null,
+      });
+      highChase.step({
+        dt: 1 / 60,
+        time,
+        settings: {
+          ...baseSettings,
+          chaseStrength: 1,
+        },
+        threatPosition: null,
+      });
+    }
+
+    const lowPositions = lowChase.snapshot().positions;
+    const highPositions = highChase.snapshot().positions;
+    const meanDelta =
+      lowPositions.reduce(
+        (sum, value, index) => sum + Math.abs(value - highPositions[index]),
+        0,
+      ) / lowPositions.length;
+
+    expect(meanDelta).toBeGreaterThan(0.002);
+  });
+
   it("propagates a local threat speed change through nearby alignment", () => {
     const control = new CpuMurmurationSimulation({ seed: 21, initialCount: 8 });
     const threatened = new CpuMurmurationSimulation({ seed: 21, initialCount: 8 });

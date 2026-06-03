@@ -17,6 +17,7 @@ export type MurmurationSettings = Readonly<{
   inertia: number;
   noise: number;
   flow: number;
+  chaseStrength: number;
   wanderRadius: number;
   wanderSpeed: number;
   threatMode: ThreatMode;
@@ -43,20 +44,21 @@ export type MurmurationSettings = Readonly<{
 }>;
 
 export const defaultSettings: MurmurationSettings = {
-  count: 3000,
-  speed: 0.85,
-  minSpeed: 0.25,
-  maxSpeed: 2.2,
+  count: 16000,
+  speed: 0.42,
+  minSpeed: 0.02,
+  maxSpeed: 0.82,
   neighborCount: 7,
   neighborRadius: 0.12,
-  separation: 1.35,
-  alignment: 1.8,
-  cohesion: 0.85,
-  inertia: 0.72,
-  noise: 0.08,
-  flow: 0.35,
-  wanderRadius: 0.32,
-  wanderSpeed: 0.62,
+  separation: 0.72,
+  alignment: 0.48,
+  cohesion: 1.72,
+  inertia: 0.84,
+  noise: 0.02,
+  flow: 0.18,
+  chaseStrength: 0.88,
+  wanderRadius: 0.54,
+  wanderSpeed: 0.42,
   threatMode: "off",
   threatStrength: 0,
   threatRadius: 0.18,
@@ -64,11 +66,11 @@ export const defaultSettings: MurmurationSettings = {
   vacuoleStrength: 0,
   splitGain: 0,
   blackeningGain: 0.25,
-  particleScale: 1,
-  depthFade: 0.44,
-  trailMode: "velocity",
-  trailLength: 0.35,
-  trailOpacity: 0.18,
+  particleScale: 1.32,
+  depthFade: 0.42,
+  trailMode: "off",
+  trailLength: 0.34,
+  trailOpacity: 0.08,
   theme: "ink",
   renderMode: "impostor-quads",
   simulationMode: "auto",
@@ -77,7 +79,7 @@ export const defaultSettings: MurmurationSettings = {
   adaptiveQuality: true,
   autoOrbit: false,
   cameraDamping: 0.08,
-  fov: 48,
+  fov: 58,
 };
 
 export type MutableSettings = {
@@ -124,6 +126,7 @@ export const clampSettings = (
   inertia: Math.min(1, Math.max(0, settings.inertia)),
   noise: Math.min(1, Math.max(0, settings.noise)),
   flow: Math.min(2, Math.max(0, settings.flow)),
+  chaseStrength: Math.min(1, Math.max(0, settings.chaseStrength)),
   wanderRadius: Math.min(1, Math.max(0, settings.wanderRadius)),
   wanderSpeed: Math.min(2, Math.max(0.05, settings.wanderSpeed)),
   threatStrength: Math.min(1, Math.max(0, settings.threatStrength)),
