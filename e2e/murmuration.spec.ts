@@ -165,6 +165,7 @@ test("renders a nonblank desktop murmuration scene", async ({ page }, testInfo) 
   await expect(page.getByTestId("settings-panel")).toContainText("chaseStrength");
   await expect(page.getByTestId("settings-panel")).toContainText("Attractor");
   await expect(page.getByTestId("settings-panel")).toContainText("attractorRadius");
+  await expect(page.getByTestId("settings-panel")).toContainText("particleOpacity");
   await expect(page.getByTestId("settings-panel")).toContainText("depthScale");
   await expect(page.getByTestId("settings-panel")).toContainText("trailMode");
   await expectScreenshotHasInk(page, screenshotPath("desktop-scene"));
@@ -255,6 +256,32 @@ test("renders predator ripple behavior without losing flock cohesion", async ({ 
   await expect(page.getByTestId("hud")).toContainText("12,000 particles");
   await expectScreenshotHasInk(page, screenshotPath("predator-ripple"), {
     dark: 400,
+    bright: 8_000,
+  });
+});
+
+test("renders velocity trails in WebGL GPGPU mode", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium");
+  await waitForScene(page);
+  const ready = (await page.getByTestId("hud").textContent())?.includes("gpgpu ready");
+
+  test.skip(!ready, "WebGL GPGPU is unavailable in this browser");
+  await applySettings(page, {
+    adaptiveQuality: false,
+    particleOpacity: 1,
+    simulationMode: "webgl-gpgpu",
+    trailMode: "velocity",
+    trailLength: 1.4,
+    trailOpacity: 0.75,
+  });
+  await page.waitForTimeout(1_500);
+
+  const snapshot = await page.evaluate(() => window.__murmuration?.snapshot().settings);
+
+  expect(snapshot?.trailMode).toBe("velocity");
+  expect(snapshot?.trailOpacity).toBeGreaterThan(0.7);
+  await expectScreenshotHasInk(page, screenshotPath("velocity-trails-webgl"), {
+    dark: 6_000,
     bright: 8_000,
   });
 });

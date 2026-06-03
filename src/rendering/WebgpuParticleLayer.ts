@@ -365,11 +365,11 @@ fn fragmentMain(input: VertexOut) -> @location(0) vec4<f32> {
     discard;
   }
 
-  let z = sqrt(1.0 - radius2);
   let edge = 1.0 - smoothstep(0.62, 1.0, radius2);
-  let shade = 0.62 + 0.38 * z;
+  let rim = smoothstep(0.58, 1.0, radius2);
+  let shade = 1.0 - rim * 0.22;
   let depth = mix(1.0, 1.0 - input.depth01, u.cameraUp.w);
-  let alpha = edge * depth * mix(0.72, 1.0, input.speed01) * (0.84 + u.params.x * 0.16);
+  let alpha = edge * depth * u.params.w;
   let color = mix(u.paper.rgb, u.ink.rgb, shade);
   return vec4<f32>(color, alpha);
 }
@@ -822,7 +822,7 @@ export class WebgpuParticleLayer {
     this.renderUniforms[36] = settings.trailOpacity;
     this.renderUniforms[37] = 0.006;
     this.renderUniforms[38] = settings.depthScale;
-    this.renderUniforms[39] = this.height;
+    this.renderUniforms[39] = settings.particleOpacity;
     this.device.queue.writeBuffer(
       this.renderUniformBuffer,
       0,

@@ -28,7 +28,6 @@ export const adaptiveQualityPatch = (
   if (settings.trailMode !== "off") {
     return {
       trailMode: "off",
-      trailOpacity: 0,
     };
   }
 
@@ -46,4 +45,3 @@ export const adaptiveQualityPatch = (
 
   return {};
 };
-

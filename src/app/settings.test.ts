@@ -23,6 +23,7 @@ describe("settings", () => {
       chaseStrength: 8,
       attractorSpeed: 9,
       attractorRadius: 9,
+      particleOpacity: 9,
       depthScale: 9,
       wanderRadius: 8,
       wanderSpeed: 0,
@@ -36,6 +37,7 @@ describe("settings", () => {
     expect(clamped.chaseStrength).toBe(1);
     expect(clamped.attractorSpeed).toBe(3);
     expect(clamped.attractorRadius).toBe(2.4);
+    expect(clamped.particleOpacity).toBe(1);
     expect(clamped.depthScale).toBe(2);
     expect(clamped.wanderRadius).toBe(1);
     expect(clamped.wanderSpeed).toBe(0.05);

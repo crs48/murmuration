@@ -30,7 +30,6 @@ describe("adaptiveQualityPatch", () => {
       ),
     ).toEqual({
       trailMode: "off",
-      trailOpacity: 0,
     });
   });
 
@@ -50,4 +49,3 @@ describe("adaptiveQualityPatch", () => {
     ).toEqual({ count: 820 });
   });
 });
-

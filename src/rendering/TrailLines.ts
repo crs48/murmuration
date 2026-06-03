@@ -24,6 +24,7 @@ export class TrailLines {
       color: theme.ink,
       transparent: true,
       opacity: settings.trailOpacity,
+      depthTest: false,
       depthWrite: false,
     });
     this.lines = new LineSegments(this.geometry, this.material);

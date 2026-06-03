@@ -596,6 +596,7 @@ gantt
 - [x] Render particles with a custom point or impostor shader.
 - [x] Add monochrome themes: ink, inverse, paper, graphite.
 - [x] Add depth-scale and depth-fade visual controls for tuning the 3D read.
+- [x] Add particle opacity and subtle rim falloff controls so dense clumps remain legible.
 - [x] Add velocity-stretched particle tails.
 - [x] Add screen-space accumulation trail mode as an optional visual effect.
 - [x] Add adaptive quality controls for pixel ratio, particle count, and trail mode.
