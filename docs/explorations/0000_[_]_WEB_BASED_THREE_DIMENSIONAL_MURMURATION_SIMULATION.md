@@ -602,24 +602,24 @@ gantt
 
 ## Validation Checklist ✅
 
-- [ ] Verify the app renders a nonblank canvas at desktop and mobile viewport sizes.
+- [x] Verify the app renders a nonblank canvas at desktop and mobile viewport sizes.
 - [ ] Verify camera orbit, pan, wheel zoom, and pinch zoom.
 - [ ] Verify no UI text overlaps at narrow mobile widths.
-- [ ] Verify the side panel can collapse or scroll without blocking the whole scene.
-- [ ] Verify all presets produce visually distinct motion.
-- [ ] Verify count changes recreate or resize buffers without leaking memory.
+- [x] Verify the side panel can collapse or scroll without blocking the whole scene.
+- [x] Verify all presets produce visually distinct motion.
+- [x] Verify count changes recreate or resize buffers without leaking memory.
 - [x] Verify CPU fallback remains usable at reduced particle counts.
 - [x] Verify WebGL GPGPU backend supports required float texture capabilities before enabling it.
 - [ ] Verify WebGPU backend fails gracefully when `navigator.gpu` is unavailable.
 - [ ] Measure FPS at 1,000, 5,000, 10,000, 25,000, 50,000, and 100,000 particles.
 - [ ] Keep 10,000 particles near 60 FPS on a modern desktop browser.
 - [ ] Keep 50,000 particles interactive by reducing trails, pixel ratio, or render mode.
-- [ ] Confirm black-on-white and white-on-black themes remain legible in screenshots.
+- [x] Confirm black-on-white and white-on-black themes remain legible in screenshots.
 - [x] Confirm trails do not turn the simulation into a blurry smear.
 - [ ] Confirm threat mode creates visible waves or voids without fragmenting the flock permanently.
 - [ ] Confirm local speed changes propagate through nearby particles.
 - [x] Confirm particle positions remain bounded and do not accumulate NaNs.
-- [ ] Run automated visual smoke tests with Playwright screenshots.
+- [x] Run automated visual smoke tests with Playwright screenshots.
 - [x] Run unit tests for settings reducers, presets, CPU spatial hash, and simulation invariants.
 - [ ] Run a long soak test for at least 10 minutes with adaptive quality enabled.
 

@@ -7,6 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
@@ -16,8 +17,11 @@
     "tweakpane": "^4.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^24.0.0",
+    "@types/pngjs": "^6.0.5",
     "@types/three": "^0.179.0",
+    "pngjs": "^7.0.0",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vitest": "^4.1.0"
