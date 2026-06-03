@@ -59,14 +59,50 @@ export const createPane = (
   });
   visual.addBinding(settings, "particleScale", { min: 0.2, max: 4, step: 0.01 });
   visual.addBinding(settings, "depthFade", { min: 0, max: 1, step: 0.01 });
+  visual.addBinding(settings, "trailMode", {
+    options: {
+      Velocity: "velocity",
+      Accumulation: "accumulation",
+      Off: "off",
+    },
+  });
+  visual.addBinding(settings, "trailLength", { min: 0, max: 2, step: 0.01 });
   visual.addBinding(settings, "trailOpacity", { min: 0, max: 1, step: 0.01 });
   visual.addBinding(settings, "pixelRatioCap", { min: 0.75, max: 2, step: 0.05 });
+
+  const threat = pane.addFolder({ title: "Threat" });
+  threat.addBinding(settings, "threatMode", {
+    options: {
+      Off: "off",
+      Cursor: "cursor",
+      Orbit: "orbit",
+      Autonomous: "autonomous",
+    },
+  });
+  threat.addBinding(settings, "threatStrength", { min: 0, max: 1, step: 0.01 });
+  threat.addBinding(settings, "threatRadius", { min: 0.05, max: 0.6, step: 0.01 });
+  threat.addBinding(settings, "waveGain", { min: 0, max: 2, step: 0.01 });
+  threat.addBinding(settings, "vacuoleStrength", { min: 0, max: 2, step: 0.01 });
+  threat.addBinding(settings, "splitGain", { min: 0, max: 1, step: 0.01 });
+  threat.addBinding(settings, "blackeningGain", { min: 0, max: 1, step: 0.01 });
 
   const camera = pane.addFolder({ title: "Camera" });
   camera.addBinding(settings, "autoOrbit");
   camera.addBinding(settings, "cameraDamping", { min: 0, max: 0.25, step: 0.01 });
   camera.addBinding(settings, "fov", { min: 25, max: 75, step: 1 });
   camera.addButton({ title: "Reset camera" }).on("click", onResetCamera);
+
+  const performance = pane.addFolder({ title: "Performance" });
+  performance.addBinding(settings, "adaptiveQuality");
+  performance.addBinding(settings, "targetFps", { min: 24, max: 120, step: 1 });
+  performance.addBinding(settings, "simulationMode", {
+    options: {
+      Auto: "auto",
+      CPU: "cpu",
+      "WebGL GPGPU": "webgl-gpgpu",
+      WebGPU: "webgpu",
+    },
+  });
 
   return {
     pane,

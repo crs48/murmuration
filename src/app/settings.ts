@@ -41,7 +41,7 @@ export type MurmurationSettings = Readonly<{
 }>;
 
 export const defaultSettings: MurmurationSettings = {
-  count: 8000,
+  count: 3000,
   speed: 0.85,
   minSpeed: 0.25,
   maxSpeed: 2.2,
@@ -135,4 +135,3 @@ export const clampSettings = (
   cameraDamping: Math.min(0.25, Math.max(0, settings.cameraDamping)),
   fov: Math.min(75, Math.max(25, settings.fov)),
 });
-

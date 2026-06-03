@@ -45,4 +45,21 @@ describe("CpuMurmurationSimulation", () => {
     expect(simulation.snapshot().count).toBe(8);
     expect(simulation.snapshot().positions.length).toBe(24);
   });
+
+  it("uses a finite high-count auto field path", () => {
+    const simulation = new CpuMurmurationSimulation({ seed: 15, initialCount: 5000 });
+    const buffers = simulation.step({
+      dt: 1 / 60,
+      time: 2,
+      settings: {
+        ...defaultSettings,
+        count: 5000,
+      },
+      threatPosition: null,
+    });
+
+    expect(buffers.count).toBe(5000);
+    expect([...buffers.positions].every(Number.isFinite)).toBe(true);
+    expect([...buffers.velocities].every(Number.isFinite)).toBe(true);
+  });
 });

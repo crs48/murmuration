@@ -588,16 +588,16 @@ gantt
 - [x] Add topological neighbor approximation with default neighbor count near 7.
 - [x] Add Reynolds force terms: separation, alignment, cohesion, speed clamp, and boundary steering.
 - [x] Add low-frequency flow field for sheet folding and undulation.
-- [ ] Add threat field modes: cursor, orbiting, and autonomous.
-- [ ] Add threat response terms for wave, vacuole, split, blackening, and flash expansion.
+- [x] Add threat field modes: cursor, orbiting, and autonomous.
+- [x] Add threat response terms for wave, vacuole, split, blackening, and flash expansion.
 - [x] Render particles with a custom point or impostor shader.
 - [x] Add monochrome themes: ink, inverse, paper, graphite.
-- [ ] Add velocity-stretched particle tails.
+- [x] Add velocity-stretched particle tails.
 - [ ] Add screen-space accumulation trail mode as an optional visual effect.
-- [ ] Add adaptive quality controls for pixel ratio, particle count, and trail mode.
+- [x] Add adaptive quality controls for pixel ratio, particle count, and trail mode.
 - [ ] Port simulation to WebGL2 GPGPU with ping-pong position and velocity textures.
 - [ ] Add WebGPU compute adapter after WebGL GPGPU behavior is stable.
-- [ ] Add diagnostics: FPS, frame time, particle count, backend, pixel ratio, and GPU capability report.
+- [x] Add diagnostics: FPS, frame time, particle count, backend, pixel ratio, and GPU capability report.
 - [ ] Add preset import/export if the control surface becomes a design tool.
 
 ## Validation Checklist ✅
@@ -608,7 +608,7 @@ gantt
 - [ ] Verify the side panel can collapse or scroll without blocking the whole scene.
 - [ ] Verify all presets produce visually distinct motion.
 - [ ] Verify count changes recreate or resize buffers without leaking memory.
-- [ ] Verify CPU fallback remains usable at reduced particle counts.
+- [x] Verify CPU fallback remains usable at reduced particle counts.
 - [ ] Verify WebGL GPGPU backend supports required float texture capabilities before enabling it.
 - [ ] Verify WebGPU backend fails gracefully when `navigator.gpu` is unavailable.
 - [ ] Measure FPS at 1,000, 5,000, 10,000, 25,000, 50,000, and 100,000 particles.
