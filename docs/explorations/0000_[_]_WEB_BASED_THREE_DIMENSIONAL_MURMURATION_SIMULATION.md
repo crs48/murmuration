@@ -578,12 +578,12 @@ gantt
 
 ## Implementation Checklist
 
-- [ ] Create Vite + TypeScript project scaffold.
-- [ ] Add Three.js, Tweakpane, and a lightweight test runner.
+- [x] Create Vite + TypeScript project scaffold.
+- [x] Add Three.js, Tweakpane, and a lightweight test runner.
 - [ ] Build a full-viewport canvas with no landing page.
 - [ ] Add `OrbitControls` with damping, pan, wheel zoom, and touch gestures.
 - [ ] Add a right-side settings panel with grouped controls.
-- [ ] Define a declarative `MurmurationSettings` object and preset library.
+- [x] Define a declarative `MurmurationSettings` object and preset library.
 - [ ] Implement CPU spatial-hash simulation with structure-of-arrays buffers.
 - [ ] Add topological neighbor approximation with default neighbor count near 7.
 - [ ] Add Reynolds force terms: separation, alignment, cohesion, speed clamp, and boundary steering.
