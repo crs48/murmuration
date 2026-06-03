@@ -580,9 +580,9 @@ gantt
 
 - [x] Create Vite + TypeScript project scaffold.
 - [x] Add Three.js, Tweakpane, and a lightweight test runner.
-- [ ] Build a full-viewport canvas with no landing page.
-- [ ] Add `OrbitControls` with damping, pan, wheel zoom, and touch gestures.
-- [ ] Add a right-side settings panel with grouped controls.
+- [x] Build a full-viewport canvas with no landing page.
+- [x] Add `OrbitControls` with damping, pan, wheel zoom, and touch gestures.
+- [x] Add a right-side settings panel with grouped controls.
 - [x] Define a declarative `MurmurationSettings` object and preset library.
 - [x] Implement CPU spatial-hash simulation with structure-of-arrays buffers.
 - [x] Add topological neighbor approximation with default neighbor count near 7.
@@ -590,8 +590,8 @@ gantt
 - [x] Add low-frequency flow field for sheet folding and undulation.
 - [ ] Add threat field modes: cursor, orbiting, and autonomous.
 - [ ] Add threat response terms for wave, vacuole, split, blackening, and flash expansion.
-- [ ] Render particles with a custom point or impostor shader.
-- [ ] Add monochrome themes: ink, inverse, paper, graphite.
+- [x] Render particles with a custom point or impostor shader.
+- [x] Add monochrome themes: ink, inverse, paper, graphite.
 - [ ] Add velocity-stretched particle tails.
 - [ ] Add screen-space accumulation trail mode as an optional visual effect.
 - [ ] Add adaptive quality controls for pixel ratio, particle count, and trail mode.

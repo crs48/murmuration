@@ -6,6 +6,8 @@
   background: #fbfbf8;
   font-synthesis: none;
   text-rendering: geometricPrecision;
+  --panel-bg: rgba(251, 251, 248, 0.78);
+  --panel-text: #111;
 }
 
 * {
@@ -25,19 +27,93 @@ body {
   min-width: 320px;
 }
 
-.boot-screen {
-  display: grid;
+.murmuration-app,
+.scene-host,
+.murmuration-canvas {
   width: 100%;
   height: 100%;
-  place-items: center;
-  background: #fbfbf8;
-  color: #111;
 }
 
-.boot-screen span {
+.murmuration-app {
+  position: relative;
+  isolation: isolate;
+}
+
+.scene-host {
+  position: absolute;
+  inset: 0;
+}
+
+.murmuration-canvas {
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+
+.murmuration-canvas:active {
+  cursor: grabbing;
+}
+
+.pane-host {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: min(320px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  color: var(--panel-text);
+  border: 1px solid color-mix(in srgb, var(--panel-text), transparent 84%);
+  border-radius: 8px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+}
+
+.pane-host .tp-dfwv {
+  width: 100%;
+}
+
+.hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: flex;
+  max-width: min(560px, calc(100vw - 360px));
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--panel-text);
+  pointer-events: none;
+}
+
+.hud span {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--panel-text), transparent 86%);
+  border-radius: 999px;
+  padding: 0 10px;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0;
-  text-transform: uppercase;
+  white-space: nowrap;
 }
 
+@media (max-width: 760px) {
+  .pane-host {
+    top: auto;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    max-height: 46vh;
+  }
+
+  .hud {
+    top: 8px;
+    left: 8px;
+    max-width: calc(100vw - 16px);
+  }
+}
