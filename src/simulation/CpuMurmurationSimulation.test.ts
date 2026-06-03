@@ -64,6 +64,58 @@ describe("CpuMurmurationSimulation", () => {
     expect([...buffers.velocities].every(Number.isFinite)).toBe(true);
   });
 
+  it("keeps low-scale high-count particles from collapsing into micro-clumps", () => {
+    const simulation = new CpuMurmurationSimulation({ seed: 43, initialCount: 1300 });
+    const settings: MurmurationSettings = {
+      ...defaultSettings,
+      count: 1300,
+      particleScale: 0.32,
+      separation: 1.05,
+      noise: 0.012,
+      flow: 0.24,
+      simulationMode: "auto",
+    };
+
+    for (let frame = 0; frame < 360; frame += 1) {
+      simulation.step({
+        dt: 1 / 60,
+        time: frame / 60,
+        settings,
+        threatPosition: null,
+      });
+    }
+
+    const { positions, count } = simulation.snapshot();
+    const closeRadiusSq = 0.045 * 0.045;
+    const neighborCounts = new Uint8Array(count);
+
+    for (let first = 0; first < count; first += 1) {
+      const firstOffset = first * 3;
+      const firstX = positions[firstOffset];
+      const firstY = positions[firstOffset + 1];
+      const firstZ = positions[firstOffset + 2];
+
+      for (let second = first + 1; second < count; second += 1) {
+        const secondOffset = second * 3;
+        const dx = positions[secondOffset] - firstX;
+        const dy = positions[secondOffset + 1] - firstY;
+        const dz = positions[secondOffset + 2] - firstZ;
+        const distanceSq = dx * dx + dy * dy + dz * dz;
+
+        if (distanceSq < closeRadiusSq) {
+          neighborCounts[first] += 1;
+          neighborCounts[second] += 1;
+        }
+      }
+    }
+
+    const crowdedParticles = [...neighborCounts].filter((neighbors) => neighbors >= 3);
+    const crowdedRatio = crowdedParticles.length / count;
+
+    expect(crowdedRatio).toBeLessThan(0.025);
+    expect(Math.max(...neighborCounts)).toBeLessThanOrEqual(7);
+  });
+
   it("falls back to the high-count field path for unsupported GPU modes", () => {
     const simulation = new CpuMurmurationSimulation({ seed: 19, initialCount: 5000 });
     const buffers = simulation.step({

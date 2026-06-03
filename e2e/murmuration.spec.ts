@@ -78,6 +78,16 @@ type OrganicShapeSample = Readonly<{
   occupied: readonly number[];
 }>;
 
+type LowScaleSpacingSample = Readonly<{
+  path: string;
+  darkPixels: number;
+  occupiedCells: number;
+  overfullCells: number;
+  overfullCellRatio: number;
+  cellVariation: number;
+  maxToMean: number;
+}>;
+
 const jaccardDistance = (
   first: readonly number[],
   second: readonly number[],
@@ -155,6 +165,57 @@ const organicShapeSample = async (
     verticalCoverage: height / image.height,
     fillRatio: darkPixels / Math.max(1, width * height),
     occupied: Array.from(gridCounts, (count) => (count / cellArea > 0.012 ? 1 : 0)),
+  };
+};
+
+const lowScaleSpacingSample = async (
+  page: Page,
+  path: string,
+): Promise<LowScaleSpacingSample> => {
+  mkdirSync("output/playwright", { recursive: true });
+  const buffer = await page.screenshot({ path });
+  const image = PNG.sync.read(buffer);
+  const gridWidth = 48;
+  const gridHeight = 27;
+  const gridCounts = new Uint16Array(gridWidth * gridHeight);
+  let darkPixels = 0;
+
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      const offset = (y * image.width + x) * 4;
+      const luminance =
+        0.2126 * image.data[offset] +
+        0.7152 * image.data[offset + 1] +
+        0.0722 * image.data[offset + 2];
+
+      if (luminance < 125) {
+        darkPixels += 1;
+        const gridX = Math.min(gridWidth - 1, Math.floor((x / image.width) * gridWidth));
+        const gridY = Math.min(gridHeight - 1, Math.floor((y / image.height) * gridHeight));
+        gridCounts[gridY * gridWidth + gridX] += 1;
+      }
+    }
+  }
+
+  const occupiedCounts = [...gridCounts].filter((count) => count > 0);
+  const mean =
+    occupiedCounts.reduce((sum, count) => sum + count, 0) /
+    Math.max(1, occupiedCounts.length);
+  const variance =
+    occupiedCounts.reduce((sum, count) => sum + (count - mean) ** 2, 0) /
+    Math.max(1, occupiedCounts.length);
+  const overfullCells = occupiedCounts.filter(
+    (count) => count > Math.max(24, mean * 3.5),
+  ).length;
+
+  return {
+    path,
+    darkPixels,
+    occupiedCells: occupiedCounts.length,
+    overfullCells,
+    overfullCellRatio: overfullCells / Math.max(1, occupiedCounts.length),
+    cellVariation: Math.sqrt(variance) / Math.max(1, mean),
+    maxToMean: Math.max(...occupiedCounts, 0) / Math.max(1, mean),
   };
 };
 
@@ -351,6 +412,46 @@ test("keeps the Lava Lamp preset organic and varied over time", async ({ page },
   expect(Math.max(...samples.map((sample) => sample.aspect))).toBeLessThan(2.8);
   expect(Math.max(centroidSpanX, centroidSpanY)).toBeGreaterThan(140);
   expect(meanDistance).toBeGreaterThan(0.12);
+});
+
+test("keeps low particle scale spacing even after settling", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium");
+  await waitForScene(page);
+  const ready = (await page.getByTestId("hud").textContent())?.includes("gpgpu ready");
+
+  test.skip(!ready, "WebGL GPGPU is unavailable in this browser");
+  await applySettings(page, {
+    adaptiveQuality: false,
+    simulationMode: "webgl-gpgpu",
+    count: 16000,
+    particleScale: 0.32,
+    particleOpacity: 1,
+    separation: 1.05,
+    flow: 0.24,
+    noise: 0.012,
+    chaseStrength: 0.82,
+    trailMode: "off",
+  });
+  await page.evaluate(() => {
+    document.querySelector(".hud")?.setAttribute("style", "display: none");
+    document.querySelector(".pane-host")?.setAttribute("style", "display: none");
+  });
+  await page.waitForTimeout(8_000);
+
+  const sample = await lowScaleSpacingSample(
+    page,
+    screenshotPath("low-particle-scale-spacing"),
+  );
+
+  writeFileSync(
+    "output/playwright/low-particle-scale-spacing-summary.json",
+    `${JSON.stringify(sample, null, 2)}\n`,
+  );
+  expect(sample.darkPixels).toBeGreaterThan(4_000);
+  expect(sample.occupiedCells).toBeGreaterThan(80);
+  expect(sample.overfullCellRatio).toBeLessThan(0.12);
+  expect(sample.cellVariation).toBeLessThan(1.8);
+  expect(sample.maxToMean).toBeLessThan(7);
 });
 
 

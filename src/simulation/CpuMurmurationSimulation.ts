@@ -36,6 +36,12 @@ const fract = (value: number): number => value - Math.floor(value);
 const shaderHash = (seed: number): number =>
   fract(Math.sin(seed * 12.9898) * 43758.5453);
 
+const smoothstep = (edge0: number, edge1: number, value: number): number => {
+  const t = clamp(0, 1, (value - edge0) / (edge1 - edge0));
+
+  return t * t * (3 - 2 * t);
+};
+
 const leaderAnchor = (
   centerX: number,
   centerY: number,
@@ -56,6 +62,101 @@ const leaderAnchor = (
       Math.sin(phase + time * 0.16) * 0.46 +
       Math.cos(time * 0.23 + phase * 1.4) * 0.14,
   ];
+};
+
+const stratifiedOffset = (
+  slot: number,
+  groupSeed: number,
+  time: number,
+  chaseStrength: number,
+  separation: number,
+): readonly [number, number, number] => {
+  const goldenAngle = 2.39996323;
+  const y = 1 - 2 * fract((slot + 0.5) * 0.61803398875 + groupSeed * 0.13);
+  const ring = Math.sqrt(Math.max(0, 1 - y * y));
+  const theta = slot * goldenAngle + groupSeed * Math.PI * 2;
+  const shell = Math.cbrt(fract((slot + 1) * 0.754877666));
+  const radius =
+    (0.16 + shell * 0.34) *
+    (0.68 + chaseStrength * 0.34) *
+    (0.92 + separation * 0.045);
+  const laminarBreath = 1 + Math.sin(time * 0.13 + groupSeed * 12) * 0.035;
+
+  return [
+    Math.cos(theta) * ring * radius * laminarBreath,
+    y * radius * laminarBreath,
+    Math.sin(theta) * ring * radius * laminarBreath,
+  ];
+};
+
+const rippleEnvelope = (localTime: number): number =>
+  smoothstep(0.6, 1.7, localTime) *
+  (1 - smoothstep(6.2, 8.8, localTime));
+
+const positiveModulo = (value: number, divisor: number): number =>
+  ((value % divisor) + divisor) % divisor;
+
+const rippleVector = (
+  px: number,
+  py: number,
+  pz: number,
+  centerX: number,
+  centerY: number,
+  centerZ: number,
+  time: number,
+  offset: number,
+): readonly [number, number, number, number] => {
+  const localTime = positiveModulo(time + offset, 28);
+  const envelope = rippleEnvelope(localTime);
+  const t = time + offset;
+  const originX = centerX + Math.sin(t * 0.17 + offset) * 0.46;
+  const originY = centerY + Math.cos(t * 0.13 + offset * 1.7) * 0.25;
+  const originZ = centerZ + Math.cos(t * 0.19 + offset * 0.6) * 0.42;
+  const awayX = px - originX;
+  const awayY = py - originY;
+  const awayZ = pz - originZ;
+  const distanceFromRipple = Math.max(
+    0.0001,
+    Math.hypot(awayX, awayY, awayZ),
+  );
+  const radius = 0.16 + localTime * 0.16;
+  const width = 0.11 + localTime * 0.012;
+  const delta = Math.abs(distanceFromRipple - radius) / width;
+  const amount = Math.exp(-delta * delta) * envelope;
+
+  return [
+    (awayX / distanceFromRipple) * amount,
+    (awayY / distanceFromRipple) * amount,
+    (awayZ / distanceFromRipple) * amount,
+    amount,
+  ];
+};
+
+const slotRepulsion = (
+  positions: Float32Array,
+  count: number,
+  index: number,
+  slotOffset: number,
+  px: number,
+  py: number,
+  pz: number,
+  minimumDistance: number,
+): readonly [number, number, number] => {
+  const otherIndex = positiveModulo(index + slotOffset, count);
+  const otherOffset = otherIndex * 3;
+  const awayX = px - positions[otherOffset];
+  const awayY = py - positions[otherOffset + 1];
+  const awayZ = pz - positions[otherOffset + 2];
+  const distanceToOther = Math.hypot(awayX, awayY, awayZ);
+  const proximity = Math.max(0, minimumDistance - distanceToOther) / minimumDistance;
+
+  if (distanceToOther <= 0.0001 || proximity <= 0) {
+    return [0, 0, 0];
+  }
+
+  const scale = (proximity * proximity) / distanceToOther;
+
+  return [awayX * scale, awayY * scale, awayZ * scale];
 };
 
 export class CpuMurmurationSimulation implements SimulationAdapter {
@@ -486,23 +587,19 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
       const role = shaderHash(unitSeed + 5.91);
       const secondaryMix = 0.16 + shaderHash(unitSeed + 6.24) * 0.28;
       const leaderMix = role > 0.84 ? 0.62 : 0;
-      const offsetTheta = shaderHash(unitSeed + 1.23) * Math.PI * 2;
-      const offsetY = shaderHash(unitSeed + 2.34) * 2 - 1;
-      const offsetRing = Math.sqrt(Math.max(0, 1 - offsetY * offsetY));
-      const offsetBreath = 1 + Math.sin(input.time * 0.31 + unitSeed * 21) * 0.14;
-      const offsetRadius =
-        (0.1 + Math.cbrt(shaderHash(unitSeed + 3.45)) * 0.34) *
-        (0.72 + settings.chaseStrength * 0.36) *
-        offsetBreath;
+      const offsetVector = stratifiedOffset(
+        index,
+        groupSeed,
+        input.time,
+        settings.chaseStrength,
+        settings.separation,
+      );
       const followerTargetX =
-        lerp(primaryAnchor[0], secondaryAnchor[0], secondaryMix) +
-        Math.cos(offsetTheta) * offsetRing * offsetRadius;
+        lerp(primaryAnchor[0], secondaryAnchor[0], secondaryMix) + offsetVector[0];
       const followerTargetY =
-        lerp(primaryAnchor[1], secondaryAnchor[1], secondaryMix) +
-        offsetY * offsetRadius;
+        lerp(primaryAnchor[1], secondaryAnchor[1], secondaryMix) + offsetVector[1];
       const followerTargetZ =
-        lerp(primaryAnchor[2], secondaryAnchor[2], secondaryMix) +
-        Math.sin(offsetTheta) * offsetRing * offsetRadius;
+        lerp(primaryAnchor[2], secondaryAnchor[2], secondaryMix) + offsetVector[2];
       const leaderTargetX =
         flockCenterX + (driftX / driftLength) * (0.18 + shaderHash(unitSeed + 7.1) * 0.18);
       const leaderTargetY =
@@ -557,40 +654,162 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
         Math.sin(localDistance * 8 - input.time * 1.1 + unitSeed * 17) * 0.09 +
         (targetY - py) * 0.24;
       const shellInfluence = 1 - settings.chaseStrength;
-      const targetPull = 0.24 + settings.chaseStrength * 0.38;
+      const targetPull =
+        0.3 + settings.chaseStrength * 0.42 + settings.separation * 0.08;
       const driftPull = 0.16 + settings.chaseStrength * 0.06;
       const tangentPull = 0.035 * shellInfluence;
       const viscousDrag = settings.chaseStrength * (0.08 + settings.flow * 0.02);
       const flowPull = 0.035 + settings.chaseStrength * 0.015;
+      const slotDistance = 0.07 + settings.separation * 0.02;
+      const spacingA = slotRepulsion(
+        positions,
+        count,
+        index,
+        1,
+        px,
+        py,
+        pz,
+        slotDistance,
+      );
+      const spacingB = slotRepulsion(
+        positions,
+        count,
+        index,
+        -1,
+        px,
+        py,
+        pz,
+        slotDistance,
+      );
+      const spacingC = slotRepulsion(
+        positions,
+        count,
+        index,
+        7,
+        px,
+        py,
+        pz,
+        slotDistance,
+      );
+      const spacingD = slotRepulsion(
+        positions,
+        count,
+        index,
+        -7,
+        px,
+        py,
+        pz,
+        slotDistance,
+      );
+      const spacingE = slotRepulsion(
+        positions,
+        count,
+        index,
+        31,
+        px,
+        py,
+        pz,
+        slotDistance,
+      );
+      const spacingF = slotRepulsion(
+        positions,
+        count,
+        index,
+        -31,
+        px,
+        py,
+        pz,
+        slotDistance,
+      );
+      const spacingPull = settings.separation * (0.14 + settings.chaseStrength * 0.05);
+      const spacingX =
+        spacingA[0] + spacingB[0] + spacingC[0] + spacingD[0] + spacingE[0] + spacingF[0];
+      const spacingY =
+        spacingA[1] + spacingB[1] + spacingC[1] + spacingD[1] + spacingE[1] + spacingF[1];
+      const spacingZ =
+        spacingA[2] + spacingB[2] + spacingC[2] + spacingD[2] + spacingE[2] + spacingF[2];
+      const rippleA = rippleVector(
+        px,
+        py,
+        pz,
+        flockCenterX,
+        flockCenterY,
+        flockCenterZ,
+        input.time,
+        0,
+      );
+      const rippleB = rippleVector(
+        px,
+        py,
+        pz,
+        flockCenterX,
+        flockCenterY,
+        flockCenterZ,
+        input.time,
+        9.333333,
+      );
+      const rippleC = rippleVector(
+        px,
+        py,
+        pz,
+        flockCenterX,
+        flockCenterY,
+        flockCenterZ,
+        input.time,
+        18.666666,
+      );
+      const rippleRadialX = rippleA[0] + rippleB[0] + rippleC[0];
+      const rippleRadialY = rippleA[1] + rippleB[1] + rippleC[1];
+      const rippleRadialZ = rippleA[2] + rippleB[2] + rippleC[2];
+      const rippleAmount = Math.min(1, rippleA[3] + rippleB[3] + rippleC[3]);
+      const rippleTwistX =
+        (driftY / driftLength) * rippleRadialZ -
+        (driftZ / driftLength) * rippleRadialY;
+      const rippleTwistY =
+        (driftZ / driftLength) * rippleRadialX -
+        (driftX / driftLength) * rippleRadialZ;
+      const rippleTwistZ =
+        (driftX / driftLength) * rippleRadialY -
+        (driftY / driftLength) * rippleRadialX;
+      const ripplePull = settings.flow * (0.13 + settings.waveGain * 0.04);
+      const flowPulse = 0.22 + rippleAmount * 1.35;
+      const noisePulse = 0.045 + rippleAmount * 0.08;
       let ax =
         -localDirectionX * shellError * settings.cohesion * 1.35 * shellInfluence +
         (targetX - px) * settings.cohesion * targetPull +
         (driftVelocityX - vx) * settings.alignment * driftPull -
         vx * viscousDrag +
         (tangentX / tangentLength) * settings.alignment * tangentPull +
-        foldX * settings.flow * flowPull +
-        Math.sin(seed + input.time * 1.7) * settings.noise * 0.16;
+        spacingX * spacingPull +
+        foldX * settings.flow * flowPull * flowPulse +
+        (rippleRadialX + rippleTwistX * 0.28) * ripplePull +
+        Math.sin(seed + input.time * 1.7) * settings.noise * noisePulse;
       let ay =
         -localDirectionY * shellError * settings.cohesion * 1.35 * shellInfluence +
         (targetY - py) * settings.cohesion * targetPull +
         (driftVelocityY - vy) * settings.alignment * driftPull -
         vy * viscousDrag +
         (tangentY / tangentLength) * settings.alignment * tangentPull +
-        foldY * settings.flow * flowPull +
+        spacingY * spacingPull +
+        foldY * settings.flow * flowPull * flowPulse +
+        (rippleRadialY + rippleTwistY * 0.28) * ripplePull +
         buoyancy * (0.75 + settings.flow * 0.25) +
-        Math.cos(seed * 1.31 + input.time * 1.4) * settings.noise * 0.16;
+        Math.cos(seed * 1.31 + input.time * 1.4) * settings.noise * noisePulse;
       let az =
         -localDirectionZ * shellError * settings.cohesion * 1.35 * shellInfluence +
         (targetZ - pz) * settings.cohesion * targetPull +
         (driftVelocityZ - vz) * settings.alignment * driftPull -
         vz * viscousDrag +
         (tangentZ / tangentLength) * settings.alignment * tangentPull +
-        foldZ * settings.flow * flowPull +
-        Math.cos(seed * 0.73 - input.time * 1.2) * settings.noise * 0.16;
+        spacingZ * spacingPull +
+        foldZ * settings.flow * flowPull * flowPulse +
+        (rippleRadialZ + rippleTwistZ * 0.28) * ripplePull +
+        Math.cos(seed * 0.73 - input.time * 1.2) * settings.noise * noisePulse;
 
-      if (localDistance < blobRadius * 0.42) {
-        const expansion =
-          (blobRadius * 0.42 - localDistance) * settings.separation * 1.8;
+      const innerRadius =
+        blobRadius * (0.28 + shellInfluence * 0.18 + settings.separation * 0.012);
+      if (localDistance < innerRadius) {
+        const expansion = (innerRadius - localDistance) * settings.separation * 1.4;
         ax += localDirectionX * expansion;
         ay += localDirectionY * expansion;
         az += localDirectionZ * expansion;

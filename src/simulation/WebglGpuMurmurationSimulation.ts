@@ -45,6 +45,8 @@ uniform sampler2D uPositionTexture;
 uniform sampler2D uVelocityTexture;
 uniform float uTime;
 uniform float uDelta;
+uniform float uTextureSide;
+uniform float uCount;
 uniform float uSpeed;
 uniform float uMinSpeed;
 uniform float uMaxSpeed;
@@ -106,10 +108,76 @@ vec3 leaderAnchor(vec3 center, float time, float groupSeed) {
   );
 }
 
+vec2 uvForSlot(float slot) {
+  float wrappedSlot = mod(slot + uCount, uCount);
+  float x = mod(wrappedSlot, uTextureSide);
+  float y = floor(wrappedSlot / uTextureSide);
+
+  return (vec2(x, y) + 0.5) / uTextureSide;
+}
+
+vec3 slotRepulsion(vec3 pos, float slot, float slotOffset, float minimumDistance) {
+  vec3 other = texture2D(uPositionTexture, uvForSlot(slot + slotOffset)).xyz;
+  vec3 away = pos - other;
+  float distanceToOther = length(away);
+  float proximity = max(0.0, minimumDistance - distanceToOther) / minimumDistance;
+
+  if (distanceToOther <= 0.0001 || proximity <= 0.0) {
+    return vec3(0.0);
+  }
+
+  return (away / distanceToOther) * proximity * proximity;
+}
+
+vec3 stratifiedOffset(float slot, float groupSeed, float time, float chaseStrength, float separation) {
+  float goldenAngle = 2.39996323;
+  float y = 1.0 - 2.0 * fract((slot + 0.5) * 0.61803398875 + groupSeed * 0.13);
+  float ring = sqrt(max(0.0, 1.0 - y * y));
+  float theta = slot * goldenAngle + groupSeed * 6.2831853;
+  float shell = pow(fract((slot + 1.0) * 0.754877666), 0.3333);
+  float radius =
+    (0.16 + shell * 0.34) *
+    (0.68 + chaseStrength * 0.34) *
+    (0.92 + separation * 0.045);
+  float laminarBreath = 1.0 + sin(time * 0.13 + groupSeed * 12.0) * 0.035;
+
+  return vec3(cos(theta) * ring, y, sin(theta) * ring) * radius * laminarBreath;
+}
+
+float rippleEnvelope(float localTime) {
+  return smoothstep(0.6, 1.7, localTime) * (1.0 - smoothstep(6.2, 8.8, localTime));
+}
+
+vec3 rippleCenter(vec3 center, float time, float offset) {
+  float t = time + offset;
+
+  return center + vec3(
+    sin(t * 0.17 + offset) * 0.46,
+    cos(t * 0.13 + offset * 1.7) * 0.25,
+    cos(t * 0.19 + offset * 0.6) * 0.42
+  );
+}
+
+vec4 rippleVector(vec3 pos, vec3 center, float time, float offset) {
+  float period = 28.0;
+  float localTime = mod(time + offset, period);
+  float envelope = rippleEnvelope(localTime);
+  vec3 origin = rippleCenter(center, time, offset);
+  vec3 away = pos - origin;
+  float distanceFromRipple = max(0.0001, length(away));
+  float radius = 0.16 + localTime * 0.16;
+  float width = 0.11 + localTime * 0.012;
+  float delta = abs(distanceFromRipple - radius) / width;
+  float amount = exp(-delta * delta) * envelope;
+
+  return vec4((away / distanceFromRipple) * amount, amount);
+}
+
 void main() {
   vec3 pos = texture2D(uPositionTexture, vUv).xyz;
   vec3 vel = texture2D(uVelocityTexture, vUv).xyz;
   float seed = hash(vUv);
+  float slot = floor(vUv.x * uTextureSide) + floor(vUv.y * uTextureSide) * uTextureSide;
   vec3 flockCenter = flockWanderCenter(uTime);
   vec3 fromCenter = pos - flockCenter;
   float dist = max(0.0001, length(fromCenter));
@@ -168,21 +236,10 @@ void main() {
   float role = hash(vec2(seed, 5.91));
   float secondaryMix = 0.16 + hash(vec2(seed, 6.24)) * 0.28;
   float leaderMix = step(0.84, role) * 0.62;
-  float offsetTheta = hash(vec2(seed, 1.23)) * 6.2831853;
-  float offsetY = hash(vec2(seed, 2.34)) * 2.0 - 1.0;
-  float offsetRing = sqrt(max(0.0, 1.0 - offsetY * offsetY));
-  float offsetBreath = 1.0 + sin(uTime * 0.31 + seed * 21.0) * 0.14;
-  float offsetRadius =
-    (0.1 + pow(hash(vec2(seed, 3.45)), 0.3333) * 0.34) *
-    (0.72 + uChaseStrength * 0.36) *
-    offsetBreath;
+  vec3 offset = stratifiedOffset(slot, groupSeed, uTime, uChaseStrength, uSeparation);
   vec3 followerTarget =
     mix(primaryAnchor, secondaryAnchor, secondaryMix) +
-    vec3(
-      cos(offsetTheta) * offsetRing * offsetRadius,
-      offsetY * offsetRadius,
-      sin(offsetTheta) * offsetRing * offsetRadius
-    );
+    offset;
   vec3 leaderTarget = flockCenter + sharedDrift * (0.18 + hash(vec2(seed, 7.1)) * 0.18);
   vec3 chaseTarget = mix(followerTarget, leaderTarget, leaderMix);
   vec3 blobTarget = mix(legacyTarget, chaseTarget, uChaseStrength);
@@ -214,27 +271,47 @@ void main() {
     (blobTarget.y - pos.y) * 0.24;
   vec3 driftVelocity = sharedDrift * (0.28 + uFlow * 0.12 + uCohesion * 0.03);
   float shellInfluence = 1.0 - uChaseStrength;
-  float targetPull = 0.24 + uChaseStrength * 0.38;
+  float targetPull = 0.3 + uChaseStrength * 0.42 + uSeparation * 0.08;
   float driftPull = 0.16 + uChaseStrength * 0.06;
   float tangentPull = 0.035 * shellInfluence;
   float viscousDrag = uChaseStrength * (0.08 + uFlow * 0.02);
   float flowPull = 0.035 + uChaseStrength * 0.015;
+  vec4 rippleA = rippleVector(pos, flockCenter, uTime, 0.0);
+  vec4 rippleB = rippleVector(pos, flockCenter, uTime, 9.333333);
+  vec4 rippleC = rippleVector(pos, flockCenter, uTime, 18.666666);
+  vec3 rippleRadial = rippleA.xyz + rippleB.xyz + rippleC.xyz;
+  float rippleAmount = clamp(rippleA.w + rippleB.w + rippleC.w, 0.0, 1.0);
+  vec3 rippleTwist = cross(sharedDrift, rippleRadial);
+  vec3 rippleForce = rippleRadial + rippleTwist * 0.28;
+  float flowPulse = 0.22 + rippleAmount * 1.35;
+  float noisePulse = 0.045 + rippleAmount * 0.08;
+  float slotDistance = 0.07 + uSeparation * 0.02;
+  vec3 spacingForce =
+    slotRepulsion(pos, slot, 1.0, slotDistance) +
+    slotRepulsion(pos, slot, -1.0, slotDistance) +
+    slotRepulsion(pos, slot, 7.0, slotDistance) +
+    slotRepulsion(pos, slot, -7.0, slotDistance) +
+    slotRepulsion(pos, slot, 31.0, slotDistance) +
+    slotRepulsion(pos, slot, -31.0, slotDistance);
   vec3 acceleration =
     -localDirection * shellError * uCohesion * 1.35 * shellInfluence +
     (blobTarget - pos) * uCohesion * targetPull +
     (driftVelocity - vel) * uAlignment * driftPull -
     vel * viscousDrag +
     (tangent / tangentLength) * uAlignment * tangentPull +
-    fold * uFlow * flowPull +
+    spacingForce * uSeparation * (0.14 + uChaseStrength * 0.05) +
+    fold * uFlow * flowPull * flowPulse +
+    rippleForce * uFlow * (0.13 + uWaveGain * 0.04) +
     vec3(0.0, buoyancy * (0.75 + uFlow * 0.25), 0.0) +
     vec3(
       sin(seed * 100.0 + uTime * 1.7),
       cos(seed * 131.0 + uTime * 1.4),
       cos(seed * 73.0 - uTime * 1.2)
-    ) * uNoise * 0.16;
+    ) * uNoise * noisePulse;
 
-  if (localDistance < blobRadius * 0.42) {
-    acceleration += localDirection * (blobRadius * 0.42 - localDistance) * uSeparation * 1.8;
+  float innerRadius = blobRadius * (0.28 + shellInfluence * 0.18 + uSeparation * 0.012);
+  if (localDistance < innerRadius) {
+    acceleration += localDirection * (innerRadius - localDistance) * uSeparation * 1.4;
   }
 
   if (uThreatEnabled > 0.5 && uThreatStrength > 0.0) {
@@ -317,6 +394,8 @@ export class WebglGpuMurmurationSimulation {
       uVelocityTexture: { value: null },
       uTime: { value: 0 },
       uDelta: { value: 0 },
+      uTextureSide: { value: 1 },
+      uCount: { value: 1 },
       uSpeed: { value: 0 },
       uMinSpeed: { value: 0 },
       uMaxSpeed: { value: 0 },
@@ -458,6 +537,8 @@ export class WebglGpuMurmurationSimulation {
     this.velocityMaterial.uniforms.uVelocityTexture.value = this.velocitySource;
     this.velocityMaterial.uniforms.uTime.value = input.time;
     this.velocityMaterial.uniforms.uDelta.value = delta;
+    this.velocityMaterial.uniforms.uTextureSide.value = this.textureSide;
+    this.velocityMaterial.uniforms.uCount.value = input.settings.count;
     this.velocityMaterial.uniforms.uSpeed.value = input.settings.speed;
     this.velocityMaterial.uniforms.uMinSpeed.value = input.settings.minSpeed;
     this.velocityMaterial.uniforms.uMaxSpeed.value = input.settings.maxSpeed;
