@@ -62,4 +62,10 @@ describe("readControllerIntent", () => {
     expect(intent.scatter).toBe(0.3);
     expect(intent.mediumPulse).toBe(0.9);
   });
+
+  it("handles connected controllers without gamepad state", () => {
+    expect(readControllerIntent([{ handedness: "right", gamepad: null }])).toEqual(
+      neutralSwarmPilotIntent,
+    );
+  });
 });

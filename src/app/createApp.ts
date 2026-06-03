@@ -35,6 +35,13 @@ import { createDesktopPilotIntent } from "../xr/desktopPilotIntent";
 import { createXrSessionButton } from "../xr/createXrSessionButton";
 import { createSwarmPilotRig } from "../xr/swarmPilotRig";
 import { quest2XrQualityPatch } from "../xr/xrQuality";
+import { VrStatusPanel } from "../xr/VrStatusPanel";
+import {
+  createXrHapticsState,
+  pulseXrInputSources,
+  shouldPulseHaptics,
+} from "../xr/haptics";
+import type { PresetName } from "./presets";
 
 export type MurmurationApp = Readonly<{
   dispose: () => void;
@@ -55,6 +62,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   const sceneHost = createElement("div", "scene-host");
   const hud = createElement("aside", "hud");
   const paneHost = createElement("aside", "pane-host");
+  let selectedPreset: PresetName = "Lava Lamp";
 
   hud.dataset.testid = "hud";
   paneHost.dataset.testid = "settings-panel";
@@ -85,8 +93,11 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     rendererRig.scene,
   );
   const xrCameraRig = createXrCameraRig(rendererRig.renderer, cameraRig);
+  rendererRig.scene.add(cameraRig.camera);
+  const vrStatusPanel = new VrStatusPanel(cameraRig.camera);
   const desktopPilotIntent = createDesktopPilotIntent(window);
   const swarmPilot = createSwarmPilotRig();
+  const hapticsState = createXrHapticsState();
   const pointerThreat: PointerThreat = {
     active: false,
     position: [0, 0, 0],
@@ -96,6 +107,9 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     onExportPreset: () => exportSettings(settings),
     onImportPreset: (source) => {
       Object.assign(settings, importSettings(source));
+    },
+    onPresetChange: (preset) => {
+      selectedPreset = preset;
     },
   });
   let disposed = false;
@@ -190,6 +204,16 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       <span>${Math.hypot(...pilot.coreVelocity).toFixed(2)} core</span>
       <span>${pilot.radius.toFixed(2)} radius</span>
     `;
+    vrStatusPanel.update({
+      isPresenting: rendererRig.renderer.xr.isPresenting,
+      presetName: selectedPreset,
+      mediumMode: settings.mediumMode,
+      simulationLabel,
+      fps,
+      count: settings.count,
+      radius: pilot.radius,
+      coreSpeed: Math.hypot(...pilot.coreVelocity),
+    });
   };
 
   const updatePointerThreat = (event: PointerEvent): void => {
@@ -228,6 +252,16 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     const pilotIntent = xrCameraRig.isPresenting()
       ? xrControllerRig.intent()
       : desktopPilotIntent.intent();
+
+    if (
+      xrCameraRig.isPresenting() &&
+      shouldPulseHaptics(pilotIntent, now, hapticsState)
+    ) {
+      pulseXrInputSources(
+        rendererRig.renderer.xr.getSession()?.inputSources ?? [],
+      );
+    }
+
     const pilot = swarmPilot.step({ dt, intent: pilotIntent });
     const threatPosition = deriveThreatPosition(
       settings,
@@ -355,6 +389,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       xrSessionButton.dispose();
       xrControllerRig.dispose();
       desktopPilotIntent.dispose();
+      vrStatusPanel.dispose();
       cameraRig.dispose();
       rendererRig.dispose();
       simulation.dispose();

@@ -705,11 +705,11 @@ Goal:
 - [x] Add adaptive Quest 2 quality caps for particle counts, render scale, and medium complexity.
 - [x] Prototype WebGL2 GPGPU ping-pong textures for position/velocity updates.
 - [x] Keep WebGPU exploration behind capability flags and outside the critical Quest 2 path until WebXR/WebGPU binding support is proven on device.
-- [ ] Add in-scene minimal VR UI for mode/preset feedback.
-- [ ] Add haptic pulses where WebXR/browser support allows it, but keep the simulator playable without haptics.
-- [ ] Add comfort presets: `Comfort Flight`, `Swarm Pilot`, and `Acro Swarm`.
-- [ ] Create Quest 2-specific presets with lower counts and smaller point sizes than desktop.
-- [ ] Document local HTTPS device testing and remote debugging workflow.
+- [x] Add in-scene minimal VR UI for mode/preset feedback.
+- [x] Add haptic pulses where WebXR/browser support allows it, but keep the simulator playable without haptics.
+- [x] Add comfort presets: `Comfort Flight`, `Swarm Pilot`, and `Acro Swarm`.
+- [x] Create Quest 2-specific presets with lower counts and smaller point sizes than desktop.
+- [x] Document local HTTPS device testing and remote debugging workflow.
 
 ## Validation Checklist
 
@@ -729,8 +729,8 @@ Goal:
 - [ ] Adaptive quality reduces count/render scale before dropping below comfort frame rate for sustained periods.
 - [ ] Exiting XR returns cleanly to desktop preview.
 - [x] App handles missing WebXR support gracefully.
-- [ ] App handles missing `gamepad` state gracefully.
-- [ ] App handles one-controller mode gracefully.
+- [x] App handles missing `gamepad` state gracefully.
+- [x] App handles one-controller mode gracefully.
 - [x] Tests cover controller intent reduction, pilot rig integration, medium presets, and simulation input clamping.
 - [ ] Profiling distinguishes CPU-bound, vertex-bound, and fragment-bound cases.
 

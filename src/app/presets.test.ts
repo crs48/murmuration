@@ -4,6 +4,10 @@ describe("presets", () => {
   it("defines the expected aesthetic preset set", () => {
     expect(presetNames).toEqual([
       "Quiet Roost",
+      "Comfort Flight",
+      "Swarm Pilot",
+      "Acro Swarm",
+      "Quest 2 Dense",
       "Lava Lamp",
       "Ink Cloud",
       "Predator Ripple",
@@ -39,5 +43,24 @@ describe("presets", () => {
 
   it("retrieves presets by name", () => {
     expect(presetByName("Predator Ripple").settings.threatMode).toBe("orbit");
+  });
+
+  it("keeps Quest-targeted presets inside the immersive budget", () => {
+    const questPresetNames = [
+      "Comfort Flight",
+      "Swarm Pilot",
+      "Acro Swarm",
+      "Quest 2 Dense",
+    ] as const;
+
+    for (const name of questPresetNames) {
+      const { settings } = presetByName(name);
+
+      expect(settings.count).toBeLessThanOrEqual(8000);
+      expect(settings.pixelRatioCap).toBeLessThanOrEqual(1);
+      expect(settings.targetFps).toBeGreaterThanOrEqual(72);
+      expect(settings.trailMode).toBe("off");
+      expect(settings.particleScale).toBeLessThan(0.8);
+    }
   });
 });

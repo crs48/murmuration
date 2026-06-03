@@ -16,6 +16,7 @@ export type PaneActions = Readonly<{
   onResetCamera: () => void;
   onExportPreset: () => string;
   onImportPreset: (source: string) => void;
+  onPresetChange?: (preset: PresetName) => void;
 }>;
 
 export const createPane = (
@@ -37,6 +38,7 @@ export const createPane = (
   }).on("change", (event) => {
     presetState.preset = event.value;
     Object.assign(settings, presetByName(presetState.preset).settings);
+    actions.onPresetChange?.(presetState.preset);
     pane.refresh();
   });
 
