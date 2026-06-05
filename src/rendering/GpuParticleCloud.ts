@@ -20,11 +20,13 @@ uniform float uPixelRatio;
 uniform float uDepthScale;
 uniform float uTrailLength;
 uniform float uVelocityTrail;
+uniform float uTrailWaviness;
 
 varying float vDepth01;
 varying float vSpeed01;
 varying vec2 vTrailDirection;
 varying float vTrailStretch;
+varying float vTrailWave;
 
 void main() {
   vec3 positionSample = texture2D(uPositionTexture, reference).xyz;
@@ -39,14 +41,18 @@ void main() {
   vDepth01 = smoothstep(0.0, 4.8, depth);
   vSpeed01 = smoothstep(0.0, 3.2, length(velocitySample));
   vTrailDirection = motionLength > 0.0001 ? motion / motionLength : vec2(1.0, 0.0);
+  vTrailWave =
+    fract(sin(dot(reference, vec2(127.1, 311.7))) * 43758.5453123) *
+    6.2831853 +
+    vSpeed01 * 2.3;
   vTrailStretch =
     uVelocityTrail *
-    clamp(uTrailLength * 0.85, 0.0, 2.0) *
-    clamp(motionLength * 18.0 + vSpeed01 * 0.65, 0.0, 1.0);
+    clamp(uTrailLength * 0.72, 0.0, 3.4) *
+    clamp(motionLength * 24.0 + vSpeed01 * 0.85, 0.0, 1.0);
   gl_Position = headClip;
   float depthSize = 8.75 / pow(max(0.25, depth / 3.2), uDepthScale);
   gl_PointSize = clamp(
-    uParticleScale * uPixelRatio * depthSize * (1.0 + vTrailStretch * 2.2),
+    uParticleScale * uPixelRatio * depthSize * (1.0 + vTrailStretch * 2.8),
     1.5,
     72.0
   );
@@ -61,27 +67,42 @@ uniform vec3 uPaper;
 uniform float uDepthFade;
 uniform float uParticleOpacity;
 uniform float uTrailOpacity;
+uniform float uTrailWaviness;
 
 varying float vDepth01;
 varying float vSpeed01;
 varying vec2 vTrailDirection;
 varying float vTrailStretch;
+varying float vTrailWave;
 
 void main() {
   vec2 p = gl_PointCoord * 2.0 - 1.0;
-  float headRadius = max(0.28, 1.0 / (1.0 + vTrailStretch * 2.2));
+  float headRadius = max(0.28, 1.0 / (1.0 + vTrailStretch * 2.8));
   vec2 headP = p / headRadius;
   float headR2 = dot(headP, headP);
   float head = 1.0 - smoothstep(0.84, 1.0, headR2);
-  float behind = dot(p, -vTrailDirection);
-  float across = abs(p.x * vTrailDirection.y - p.y * vTrailDirection.x);
-  float tailLength = 0.18 + vTrailStretch * 1.1;
-  float tailWidth = mix(0.3, 0.08, clamp(vTrailStretch, 0.0, 1.0));
+  vec2 backward = -vTrailDirection;
+  vec2 perpendicular = vec2(-backward.y, backward.x);
+  float rawBehind = dot(p, backward);
+  float tailLength = 0.22 + vTrailStretch * 1.35;
+  float rawProgress = clamp(rawBehind / max(0.001, tailLength), 0.0, 1.0);
+  float waveEnvelope = rawProgress * rawProgress * (1.0 - smoothstep(0.86, 1.0, rawProgress));
+  float wave =
+    sin(rawProgress * (5.4 + vSpeed01 * 3.4) + vTrailWave) *
+    uTrailWaviness *
+    vTrailStretch *
+    0.18 *
+    waveEnvelope;
+  vec2 tailP = p - perpendicular * wave;
+  float behind = dot(tailP, backward);
+  float progress = clamp(behind / max(0.001, tailLength), 0.0, 1.0);
+  float across = abs(tailP.x * vTrailDirection.y - tailP.y * vTrailDirection.x);
+  float tailWidth = mix(0.34, 0.07, clamp(vTrailStretch * 0.62, 0.0, 1.0));
   float tail =
     step(0.0, behind) *
     (1.0 - smoothstep(tailWidth, tailWidth + 0.22, across)) *
-    (1.0 - smoothstep(tailLength * 0.18, tailLength, behind)) *
-    vTrailStretch *
+    (1.0 - smoothstep(0.08, 1.0, progress)) *
+    clamp(vTrailStretch * 0.82, 0.0, 1.4) *
     uTrailOpacity;
 
   if (max(head, tail) <= 0.001) {
@@ -125,7 +146,8 @@ export class GpuParticleCloud {
         uDepthFade: { value: settings.depthFade },
         uParticleOpacity: { value: settings.particleOpacity },
         uTrailLength: { value: settings.trailLength },
-        uVelocityTrail: { value: settings.trailMode === "velocity" ? settings.trailOpacity : 0 },
+        uVelocityTrail: { value: settings.trailMode === "velocity" ? 1 : 0 },
+        uTrailWaviness: { value: settings.trailWaviness },
         uTrailOpacity: { value: settings.trailOpacity },
       },
       vertexShader,
@@ -151,7 +173,8 @@ export class GpuParticleCloud {
     this.material.uniforms.uParticleOpacity.value = settings.particleOpacity;
     this.material.uniforms.uTrailLength.value = settings.trailLength;
     this.material.uniforms.uVelocityTrail.value =
-      settings.trailMode === "velocity" ? settings.trailOpacity : 0;
+      settings.trailMode === "velocity" ? 1 : 0;
+    this.material.uniforms.uTrailWaviness.value = settings.trailWaviness;
     this.material.uniforms.uTrailOpacity.value = settings.trailOpacity;
     this.geometry.setDrawRange(0, state.count);
   };

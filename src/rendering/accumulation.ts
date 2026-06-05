@@ -20,7 +20,7 @@ export const isAccumulationEnabled = (
 export const accumulationFadeOpacity = (
   settings: MurmurationSettings,
 ): number => {
-  const persistence = clamp(0, 1, settings.trailLength / 2);
+  const persistence = clamp(0, 1, settings.trailLength / 5);
   const visibility = clamp(0, 1, settings.trailOpacity);
 
   return clamp(0.025, 0.32, 0.3 - persistence * 0.18 + (1 - visibility) * 0.04);
@@ -81,4 +81,3 @@ export class AccumulationPass {
     this.material.dispose();
   };
 }
-

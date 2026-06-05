@@ -47,6 +47,7 @@ export type MurmurationSettings = Readonly<{
   mediumPointScale: number;
   trailLength: number;
   trailOpacity: number;
+  trailWaviness: number;
   theme: ThemeName;
   renderMode: RenderMode;
   simulationMode: SimulationMode;
@@ -92,14 +93,15 @@ export const defaultSettings: MurmurationSettings = {
   particleOpacity: 1,
   depthScale: 1,
   depthFade: 0.42,
-  trailMode: "off",
+  trailMode: "velocity",
   mediumMode: "grid",
   mediumIntensity: 1,
   mediumTurbulence: 0.25,
   mediumWake: 0.5,
   mediumPointScale: 1,
-  trailLength: 0.34,
-  trailOpacity: 0.08,
+  trailLength: 2.8,
+  trailOpacity: 0.22,
+  trailWaviness: 0.68,
   theme: "ink",
   renderMode: "impostor-quads",
   simulationMode: "auto",
@@ -179,8 +181,9 @@ export const clampSettings = (
   mediumTurbulence: Math.min(1, Math.max(0, settings.mediumTurbulence)),
   mediumWake: Math.min(1, Math.max(0, settings.mediumWake)),
   mediumPointScale: Math.min(2, Math.max(0.2, settings.mediumPointScale)),
-  trailLength: Math.min(2, Math.max(0, settings.trailLength)),
+  trailLength: Math.min(5, Math.max(0, settings.trailLength)),
   trailOpacity: Math.min(1, Math.max(0, settings.trailOpacity)),
+  trailWaviness: Math.min(1, Math.max(0, settings.trailWaviness)),
   targetFps: Math.min(120, Math.max(24, Math.round(settings.targetFps))),
   pixelRatioCap: Math.min(2, Math.max(0.75, settings.pixelRatioCap)),
   cameraDamping: Math.min(0.25, Math.max(0, settings.cameraDamping)),

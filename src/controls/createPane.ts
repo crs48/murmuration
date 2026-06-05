@@ -96,8 +96,9 @@ export const createPane = (
       Off: "off",
     },
   });
-  visual.addBinding(settings, "trailLength", { min: 0, max: 2, step: 0.01 });
+  visual.addBinding(settings, "trailLength", { min: 0, max: 5, step: 0.01 });
   visual.addBinding(settings, "trailOpacity", { min: 0, max: 1, step: 0.01 });
+  visual.addBinding(settings, "trailWaviness", { min: 0, max: 1, step: 0.01 });
   visual.addBinding(settings, "pixelRatioCap", { min: 0.75, max: 2, step: 0.05 });
 
   const threat = pane.addFolder({ title: "Threat" });

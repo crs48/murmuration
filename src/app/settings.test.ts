@@ -26,6 +26,8 @@ describe("settings", () => {
       attractorDebug: true,
       particleOpacity: 9,
       depthScale: 9,
+      trailLength: 99,
+      trailWaviness: 99,
       threatDebug: true,
       threatSpeed: 99,
       threatAcceleration: -1,
@@ -45,6 +47,8 @@ describe("settings", () => {
     expect(clamped.attractorDebug).toBe(true);
     expect(clamped.particleOpacity).toBe(1);
     expect(clamped.depthScale).toBe(2);
+    expect(clamped.trailLength).toBe(5);
+    expect(clamped.trailWaviness).toBe(1);
     expect(clamped.threatDebug).toBe(true);
     expect(clamped.threatSpeed).toBe(5);
     expect(clamped.threatAcceleration).toBe(0.1);

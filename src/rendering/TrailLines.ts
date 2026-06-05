@@ -9,6 +9,8 @@ import type { MurmurationSettings } from "../app/settings";
 import type { ParticleBuffers } from "../simulation/types";
 import { themeByName } from "./themes";
 
+const trailSegmentCount = 5;
+
 export class TrailLines {
   public readonly lines: LineSegments;
 
@@ -48,28 +50,50 @@ export class TrailLines {
 
     const position = this.geometry.getAttribute("position") as BufferAttribute;
     const array = position.array as Float32Array;
-    const trailScale = 0.045 * settings.trailLength;
+    const trailScale = 0.1 * settings.trailLength;
 
     for (let index = 0; index < buffers.count; index += 1) {
       const sourceOffset = index * 3;
-      const targetOffset = index * 6;
+      const targetOffset = index * trailSegmentCount * 2 * 3;
       const x = buffers.positions[sourceOffset];
       const y = buffers.positions[sourceOffset + 1];
       const z = buffers.positions[sourceOffset + 2];
       const vx = buffers.velocities[sourceOffset];
       const vy = buffers.velocities[sourceOffset + 1];
       const vz = buffers.velocities[sourceOffset + 2];
+      const speed = Math.max(0.0001, buffers.speeds[index]);
+      const seed = buffers.seeds[index] * Math.PI * 2;
+      const inversePlanar = 1 / Math.max(0.0001, Math.hypot(vx, vy));
+      const px = -vy * inversePlanar;
+      const py = vx * inversePlanar;
+      const waveScale = settings.trailWaviness * trailScale * speed * 0.18;
 
-      array[targetOffset] = x - vx * trailScale;
-      array[targetOffset + 1] = y - vy * trailScale;
-      array[targetOffset + 2] = z - vz * trailScale;
-      array[targetOffset + 3] = x;
-      array[targetOffset + 4] = y;
-      array[targetOffset + 5] = z;
+      for (let segment = 0; segment < trailSegmentCount; segment += 1) {
+        const segmentOffset = targetOffset + segment * 6;
+        const tailProgress = (trailSegmentCount - segment) / trailSegmentCount;
+        const headProgress = (trailSegmentCount - segment - 1) / trailSegmentCount;
+        const tailWave =
+          Math.sin(tailProgress * Math.PI * 2.6 + seed) *
+          waveScale *
+          tailProgress *
+          tailProgress;
+        const headWave =
+          Math.sin(headProgress * Math.PI * 2.6 + seed) *
+          waveScale *
+          headProgress *
+          headProgress;
+
+        array[segmentOffset] = x - vx * trailScale * tailProgress + px * tailWave;
+        array[segmentOffset + 1] = y - vy * trailScale * tailProgress + py * tailWave;
+        array[segmentOffset + 2] = z - vz * trailScale * tailProgress;
+        array[segmentOffset + 3] = x - vx * trailScale * headProgress + px * headWave;
+        array[segmentOffset + 4] = y - vy * trailScale * headProgress + py * headWave;
+        array[segmentOffset + 5] = z - vz * trailScale * headProgress;
+      }
     }
 
     position.needsUpdate = true;
-    this.geometry.setDrawRange(0, buffers.count * 2);
+    this.geometry.setDrawRange(0, buffers.count * trailSegmentCount * 2);
   };
 
   public setTheme = (ink: Color): void => {
@@ -89,7 +113,7 @@ export class TrailLines {
     this.capacity = count;
     this.geometry.setAttribute(
       "position",
-      new BufferAttribute(new Float32Array(count * 2 * 3), 3),
+      new BufferAttribute(new Float32Array(count * trailSegmentCount * 2 * 3), 3),
     );
   };
 }

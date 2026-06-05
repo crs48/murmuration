@@ -10,7 +10,7 @@ import type { SimulationStepInput } from "../simulation/types";
 const workgroupSize = 128;
 const particleStrideBytes = 16;
 const simUniformFloats = 32;
-const renderUniformFloats = 40;
+const renderUniformFloats = 44;
 
 const velocityShader = `
 struct SimUniforms {
@@ -428,6 +428,7 @@ struct RenderUniforms {
   ink: vec4<f32>,
   paper: vec4<f32>,
   params: vec4<f32>,
+  trail: vec4<f32>,
 };
 
 struct VertexOut {
@@ -435,11 +436,18 @@ struct VertexOut {
   @location(0) uv: vec2<f32>,
   @location(1) depth01: f32,
   @location(2) speed01: f32,
+  @location(3) trailDirection: vec2<f32>,
+  @location(4) trailStretch: f32,
+  @location(5) trailWave: f32,
 };
 
 @group(0) @binding(0) var<uniform> u: RenderUniforms;
 @group(0) @binding(1) var<storage, read> positions: array<vec4<f32>>;
 @group(0) @binding(2) var<storage, read> velocities: array<vec4<f32>>;
+
+fn hash(seed: f32) -> f32 {
+  return fract(sin(seed * 12.9898) * 43758.5453);
+}
 
 @vertex
 fn vertexMain(
@@ -459,11 +467,23 @@ fn vertexMain(
   let vel = velocities[instanceIndex].xyz;
   let cameraDistance = max(0.35, length(pos - u.cameraPosition.xyz));
   let speed01 = smoothstep(0.0, 3.2, length(vel));
+  let motion = vec2<f32>(dot(vel, u.cameraRight.xyz), dot(vel, u.cameraUp.xyz));
+  let motionLength = length(motion);
+  let trailDirection = select(
+    vec2<f32>(1.0, 0.0),
+    motion / max(0.0001, motionLength),
+    motionLength > 0.0001
+  );
+  let trailStretch =
+    u.trail.x *
+    clamp(u.trail.y * 0.72, 0.0, 3.4) *
+    clamp(speed01 * 0.9, 0.0, 1.0);
   let depthResponse = pow(max(0.25, cameraDistance / 3.2), u.params.z - 1.0);
   let worldSize =
     u.params.y *
     u.cameraRight.w *
     (0.75 + speed01 * 0.2) *
+    (1.0 + trailStretch * 2.8) *
     sqrt(cameraDistance) /
     depthResponse;
   let worldPosition =
@@ -473,22 +493,55 @@ fn vertexMain(
   out.uv = corner;
   out.depth01 = smoothstep(0.0, 4.8, cameraDistance);
   out.speed01 = speed01;
+  out.trailDirection = trailDirection;
+  out.trailStretch = trailStretch;
+  out.trailWave = hash(f32(instanceIndex) + 1.0) * 6.2831853 + speed01 * 2.3;
   return out;
 }
 
 @fragment
 fn fragmentMain(input: VertexOut) -> @location(0) vec4<f32> {
-  let radius2 = dot(input.uv, input.uv);
+  let p = input.uv;
+  let headRadius = max(0.28, 1.0 / (1.0 + input.trailStretch * 2.8));
+  let headP = p / headRadius;
+  let radius2 = dot(headP, headP);
+  let head = 1.0 - smoothstep(0.84, 1.0, radius2);
+  let backward = -input.trailDirection;
+  let perpendicular = vec2<f32>(-backward.y, backward.x);
+  let rawBehind = dot(p, backward);
+  let tailLength = 0.22 + input.trailStretch * 1.35;
+  let rawProgress = clamp(rawBehind / max(0.001, tailLength), 0.0, 1.0);
+  let waveEnvelope =
+    rawProgress *
+    rawProgress *
+    (1.0 - smoothstep(0.86, 1.0, rawProgress));
+  let wave =
+    sin(rawProgress * (5.4 + input.speed01 * 3.4) + input.trailWave) *
+    u.trail.w *
+    input.trailStretch *
+    0.18 *
+    waveEnvelope;
+  let tailP = p - perpendicular * wave;
+  let behind = dot(tailP, backward);
+  let progress = clamp(behind / max(0.001, tailLength), 0.0, 1.0);
+  let across = abs(tailP.x * input.trailDirection.y - tailP.y * input.trailDirection.x);
+  let tailWidth = mix(0.34, 0.07, clamp(input.trailStretch * 0.62, 0.0, 1.0));
+  let tail =
+    step(0.0, behind) *
+    (1.0 - smoothstep(tailWidth, tailWidth + 0.22, across)) *
+    (1.0 - smoothstep(0.08, 1.0, progress)) *
+    clamp(input.trailStretch * 0.82, 0.0, 1.4) *
+    u.trail.z;
 
-  if (radius2 > 1.0) {
+  if (max(head, tail) <= 0.001) {
     discard;
   }
 
-  let edge = 1.0 - smoothstep(0.62, 1.0, radius2);
   let rim = smoothstep(0.58, 1.0, radius2);
   let shade = 1.0 - rim * 0.22;
+  let edgeAlpha = mix(1.0, 0.76, smoothstep(0.72, 1.0, radius2));
   let depth = mix(1.0, 1.0 - input.depth01, u.cameraUp.w);
-  let alpha = edge * depth * u.params.w;
+  let alpha = max(head * edgeAlpha, tail * 0.68) * depth * u.params.w;
   let color = mix(u.paper.rgb, u.ink.rgb, shade);
   return vec4<f32>(color, alpha);
 }
@@ -945,6 +998,10 @@ export class WebgpuParticleLayer {
     this.renderUniforms[37] = 0.006;
     this.renderUniforms[38] = settings.depthScale;
     this.renderUniforms[39] = settings.particleOpacity;
+    this.renderUniforms[40] = settings.trailMode === "velocity" ? 1 : 0;
+    this.renderUniforms[41] = settings.trailLength;
+    this.renderUniforms[42] = settings.trailOpacity;
+    this.renderUniforms[43] = settings.trailWaviness;
     this.device.queue.writeBuffer(
       this.renderUniformBuffer,
       0,
