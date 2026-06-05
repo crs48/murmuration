@@ -80,7 +80,7 @@ export const defaultSettings: MurmurationSettings = {
   vacuoleStrength: 0,
   splitGain: 0,
   blackeningGain: 0.25,
-  particleScale: 1.32,
+  particleScale: 0.2,
   particleOpacity: 1,
   depthScale: 1,
   depthFade: 0.42,
