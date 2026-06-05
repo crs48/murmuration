@@ -1,22 +1,24 @@
 import {
-  AdditiveBlending,
   BufferAttribute,
   BufferGeometry,
+  NormalBlending,
   Points,
   ShaderMaterial,
   type Color,
 } from "three";
-import type { MurmurationSettings } from "../app/settings";
+import type { MediumMode, MurmurationSettings } from "../app/settings";
 import { mulberry32 } from "../math/random";
 import type { Vec3 } from "../math/vec3";
-import { mediumPresetByMode } from "./mediumPresets";
+import {
+  mediumPresetByMode,
+  type MediumPreset,
+} from "./mediumPresets";
 import type { EnvironmentAdapter, EnvironmentUpdateInput } from "./types";
 
 const gridX = 25;
 const gridY = 13;
 const gridZ = 25;
 const spacing = 0.34;
-const jitterScale = 0.048;
 const count = gridX * gridY * gridZ;
 
 const vertexShader = `
@@ -89,8 +91,8 @@ const wrappedCell = (
   return Math.floor(centerValue / spacing) + axisIndex - half;
 };
 
-const jitter = (random: () => number): number =>
-  (random() * 2 - 1) * jitterScale;
+const jitter = (random: () => number, scale: number): number =>
+  (random() * 2 - 1) * scale;
 
 export class ReferenceGrid implements EnvironmentAdapter {
   public readonly points: Points;
@@ -107,11 +109,13 @@ export class ReferenceGrid implements EnvironmentAdapter {
 
   private lastAnchor: Vec3 | null = null;
 
+  private lastMode: MediumMode | null = null;
+
   public constructor(settings: MurmurationSettings) {
     this.material = new ShaderMaterial({
       transparent: true,
       depthWrite: false,
-      blending: AdditiveBlending,
+      blending: NormalBlending,
       uniforms: {
         uInk: { value: null },
         uPaper: { value: null },
@@ -141,7 +145,7 @@ export class ReferenceGrid implements EnvironmentAdapter {
     );
     this.points = new Points(this.geometry, this.material);
     this.points.frustumCulled = false;
-    this.rebuild([0, 0, 0]);
+    this.rebuild([0, 0, 0], mediumPresetByMode(settings.mediumMode));
   }
 
   public update = ({
@@ -179,13 +183,15 @@ export class ReferenceGrid implements EnvironmentAdapter {
       this.lastAnchor &&
       this.lastAnchor[0] === anchor[0] &&
       this.lastAnchor[1] === anchor[1] &&
-      this.lastAnchor[2] === anchor[2]
+      this.lastAnchor[2] === anchor[2] &&
+      this.lastMode === settings.mediumMode
     ) {
       return;
     }
 
-    this.rebuild(center);
+    this.rebuild(center, preset);
     this.lastAnchor = anchor;
+    this.lastMode = settings.mediumMode;
   };
 
   public setTheme = (ink: Color, paper: Color): void => {
@@ -198,7 +204,7 @@ export class ReferenceGrid implements EnvironmentAdapter {
     this.material.dispose();
   };
 
-  private rebuild = (center: Vec3): void => {
+  private rebuild = (center: Vec3, preset: MediumPreset): void => {
     const random = mulberry32(2718);
     let index = 0;
 
@@ -210,11 +216,14 @@ export class ReferenceGrid implements EnvironmentAdapter {
           const cz = wrappedCell(center[2], gridZ, z);
           const offset = index * 3;
           const normalizedY = Math.abs(y - Math.floor(gridY / 2)) / Math.max(1, gridY / 2);
+          const visible = random() <= preset.density;
 
-          this.positions[offset] = cx * spacing + jitter(random);
-          this.positions[offset + 1] = cy * spacing + jitter(random);
-          this.positions[offset + 2] = cz * spacing + jitter(random);
-          this.alphas[index] = 0.32 + (1 - normalizedY) * 0.38 + random() * 0.18;
+          this.positions[offset] = cx * spacing + jitter(random, preset.jitter);
+          this.positions[offset + 1] = cy * spacing + jitter(random, preset.jitter);
+          this.positions[offset + 2] = cz * spacing + jitter(random, preset.jitter);
+          this.alphas[index] = visible
+            ? 0.32 + (1 - normalizedY) * 0.38 + random() * 0.18
+            : 0;
           this.seeds[index] = random();
           index += 1;
         }

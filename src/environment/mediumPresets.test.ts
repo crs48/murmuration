@@ -14,7 +14,7 @@ describe("medium presets", () => {
   it("keeps preset values in normalized ranges", () => {
     expect(
       mediumPresets.every(
-        ({ opacity, pointScale, turbulence, drift, colorMix }) =>
+        ({ opacity, pointScale, turbulence, drift, colorMix, density, jitter }) =>
           opacity >= 0 &&
           opacity <= 1 &&
           pointScale > 0 &&
@@ -23,7 +23,11 @@ describe("medium presets", () => {
           drift >= 0 &&
           drift <= 1 &&
           colorMix >= 0 &&
-          colorMix <= 1,
+          colorMix <= 1 &&
+          density >= 0 &&
+          density <= 1 &&
+          jitter >= 0 &&
+          jitter <= 0.34,
       ),
     ).toBe(true);
   });
