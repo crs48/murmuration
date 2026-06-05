@@ -17,9 +17,23 @@ describe("nextThreatState", () => {
     expect(
       nextThreatState(initialThreatState(), {
         ...baseInput,
-        settings: defaultSettings,
+        settings: {
+          ...defaultSettings,
+          threatMode: "off",
+          threatStrength: 0,
+        },
       }).position,
     ).toBeNull();
+  });
+
+  it("enables the autonomous threat by default", () => {
+    expect(
+      nextThreatState(initialThreatState(), {
+        ...baseInput,
+        settings: defaultSettings,
+        pointer: { active: false, position: [0, 0, 0] },
+      }).position,
+    ).not.toBeNull();
   });
 
   it("uses pointer position for cursor threat mode", () => {
