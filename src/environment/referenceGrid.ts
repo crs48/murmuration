@@ -7,7 +7,6 @@ import {
   type Color,
 } from "three";
 import type { MediumMode, MurmurationSettings } from "../app/settings";
-import { mulberry32 } from "../math/random";
 import type { Vec3 } from "../math/vec3";
 import {
   mediumPresetByMode,
@@ -91,8 +90,25 @@ const wrappedCell = (
   return Math.floor(centerValue / spacing) + axisIndex - half;
 };
 
-const jitter = (random: () => number, scale: number): number =>
-  (random() * 2 - 1) * scale;
+const fract = (value: number): number => value - Math.floor(value);
+
+const cellHash = (
+  x: number,
+  y: number,
+  z: number,
+  salt: number,
+): number =>
+  fract(
+    Math.sin(x * 127.1 + y * 311.7 + z * 74.7 + salt * 269.5) * 43758.5453123,
+  );
+
+const jitter = (
+  x: number,
+  y: number,
+  z: number,
+  salt: number,
+  scale: number,
+): number => (cellHash(x, y, z, salt) * 2 - 1) * scale;
 
 export class ReferenceGrid implements EnvironmentAdapter {
   public readonly points: Points;
@@ -205,7 +221,6 @@ export class ReferenceGrid implements EnvironmentAdapter {
   };
 
   private rebuild = (center: Vec3, preset: MediumPreset): void => {
-    const random = mulberry32(2718);
     let index = 0;
 
     for (let z = 0; z < gridZ; z += 1) {
@@ -215,16 +230,15 @@ export class ReferenceGrid implements EnvironmentAdapter {
           const cy = wrappedCell(center[1], gridY, y);
           const cz = wrappedCell(center[2], gridZ, z);
           const offset = index * 3;
-          const normalizedY = Math.abs(y - Math.floor(gridY / 2)) / Math.max(1, gridY / 2);
-          const visible = random() <= preset.density;
+          const visible = cellHash(cx, cy, cz, 1) <= preset.density;
 
-          this.positions[offset] = cx * spacing + jitter(random, preset.jitter);
-          this.positions[offset + 1] = cy * spacing + jitter(random, preset.jitter);
-          this.positions[offset + 2] = cz * spacing + jitter(random, preset.jitter);
+          this.positions[offset] = cx * spacing + jitter(cx, cy, cz, 2, preset.jitter);
+          this.positions[offset + 1] = cy * spacing + jitter(cx, cy, cz, 3, preset.jitter);
+          this.positions[offset + 2] = cz * spacing + jitter(cx, cy, cz, 4, preset.jitter);
           this.alphas[index] = visible
-            ? 0.32 + (1 - normalizedY) * 0.38 + random() * 0.18
+            ? 0.46 + cellHash(cx, cy, cz, 5) * 0.42
             : 0;
-          this.seeds[index] = random();
+          this.seeds[index] = cellHash(cx, cy, cz, 6);
           index += 1;
         }
       }

@@ -35,4 +35,12 @@ describe("medium presets", () => {
   it("falls back to off for unknown modes", () => {
     expect(mediumPresetByMode("missing" as never).mode).toBe("off");
   });
+
+  it("keeps grid medium static in world space", () => {
+    const grid = mediumPresetByMode("grid");
+
+    expect(grid.turbulence).toBe(0);
+    expect(grid.drift).toBe(0);
+    expect(grid.jitter).toBe(0);
+  });
 });
