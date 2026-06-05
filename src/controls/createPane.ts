@@ -60,6 +60,7 @@ export const createPane = (
   const attractor = pane.addFolder({ title: "Attractor" });
   attractor.addBinding(settings, "attractorSpeed", { min: 0.05, max: 3, step: 0.01 });
   attractor.addBinding(settings, "attractorRadius", { min: 0, max: 2.4, step: 0.01 });
+  attractor.addBinding(settings, "attractorDebug", { label: "debug" });
 
   const visual = pane.addFolder({ title: "Visual" });
   visual.addBinding(settings, "theme", {

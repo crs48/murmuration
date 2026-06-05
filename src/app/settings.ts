@@ -21,6 +21,7 @@ export type MurmurationSettings = Readonly<{
   chaseStrength: number;
   attractorSpeed: number;
   attractorRadius: number;
+  attractorDebug: boolean;
   wanderRadius: number;
   wanderSpeed: number;
   threatMode: ThreatMode;
@@ -69,6 +70,7 @@ export const defaultSettings: MurmurationSettings = {
   chaseStrength: 0.82,
   attractorSpeed: 0.92,
   attractorRadius: 1.18,
+  attractorDebug: false,
   wanderRadius: 1,
   wanderSpeed: 1,
   threatMode: "off",
@@ -148,6 +150,7 @@ export const clampSettings = (
   chaseStrength: Math.min(1, Math.max(0, settings.chaseStrength)),
   attractorSpeed: Math.min(3, Math.max(0.05, settings.attractorSpeed)),
   attractorRadius: Math.min(2.4, Math.max(0, settings.attractorRadius)),
+  attractorDebug: Boolean(settings.attractorDebug),
   wanderRadius: Math.min(1, Math.max(0, settings.wanderRadius)),
   wanderSpeed: Math.min(2, Math.max(0.05, settings.wanderSpeed)),
   threatStrength: Math.min(1, Math.max(0, settings.threatStrength)),

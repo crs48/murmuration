@@ -42,6 +42,22 @@ export const neutralSwarmPilotIntent: SwarmPilotIntent = {
   rightHandPosition: null,
 };
 
+export const hasActiveSwarmPilotIntent = (
+  intent: SwarmPilotIntent,
+  epsilon = 0.001,
+): boolean =>
+  Math.abs(intent.thrust) > epsilon ||
+  Math.abs(intent.yaw) > epsilon ||
+  Math.abs(intent.pitch) > epsilon ||
+  Math.abs(intent.roll) > epsilon ||
+  Math.abs(intent.gather) > epsilon ||
+  Math.abs(intent.scatter) > epsilon ||
+  Math.abs(intent.zoom) > epsilon ||
+  Math.abs(intent.mediumPulse) > epsilon ||
+  intent.preferredHeading !== null ||
+  intent.leftHandPosition !== null ||
+  intent.rightHandPosition !== null;
+
 const axisValue = (
   gamepad: ControllerGamepadLike | null | undefined,
   index: number,

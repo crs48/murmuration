@@ -29,10 +29,13 @@ import { ReferenceGrid } from "../environment/referenceGrid";
 import { ParticleCloud } from "../rendering/ParticleCloud";
 import { GpuParticleCloud } from "../rendering/GpuParticleCloud";
 import { WebgpuParticleLayer } from "../rendering/WebgpuParticleLayer";
+import { AttractorDebugOverlay } from "../rendering/AttractorDebugOverlay";
 import { createRendererRig } from "../rendering/createRenderer";
 import { TrailLines } from "../rendering/TrailLines";
 import { AccumulationPass, isAccumulationEnabled } from "../rendering/accumulation";
 import { themeByName } from "../rendering/themes";
+import { flockWanderCenter } from "../simulation/flockWander";
+import type { SimulationPilot } from "../simulation/types";
 import {
   deriveThreatPosition,
   type PointerThreat,
@@ -49,6 +52,7 @@ import {
   pulseXrInputSources,
   shouldPulseHaptics,
 } from "../xr/haptics";
+import { hasActiveSwarmPilotIntent } from "../xr/inputIntent";
 import type { PresetName } from "./presets";
 
 export type MurmurationApp = Readonly<{
@@ -71,6 +75,17 @@ const cameraScaledAttractorSettings = (
   ...settings,
   attractorRadius: settings.attractorRadius * attractorScale,
 });
+
+const attractorContainmentRadius = (
+  settings: Pick<MurmurationSettings, "attractorRadius" | "wanderRadius">,
+): number => settings.attractorRadius * settings.wanderRadius;
+
+const activeSimulationPilot = (
+  isXrPresenting: boolean,
+  isDesktopPilotActive: boolean,
+  pilot: SimulationPilot,
+): SimulationPilot | null =>
+  isXrPresenting || isDesktopPilotActive ? pilot : null;
 
 export const createApp = (root: HTMLElement): MurmurationApp => {
   const settings = cloneSettings();
@@ -99,6 +114,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   const gpuParticles = new GpuParticleCloud(settings);
   const trails = new TrailLines(settings);
   const referenceGrid = new ReferenceGrid(settings);
+  const attractorDebug = new AttractorDebugOverlay();
   const accumulation = new AccumulationPass();
   const stats = createFrameStatsTracker();
   const adaptiveQuality = createAdaptiveQualityState();
@@ -153,6 +169,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     trails.lines,
     particles.points,
     gpuParticles.points,
+    attractorDebug.group,
   );
   window.__murmuration = debugApi;
   if (capability.webgpuAvailable) {
@@ -260,14 +277,16 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     }
 
     const dt = Math.min(1 / 20, (now - lastNow) / 1000);
+    const time = now / 1000;
     lastNow = now;
     coercePaneSettings(settings, clampSettings(settings));
     resize();
     updateTheme();
     xrCameraRig.update();
+    const isXrPresenting = xrCameraRig.isPresenting();
     const xrQualityPatch = quest2XrQualityPatch(
       settings,
-      xrCameraRig.isPresenting(),
+      isXrPresenting,
     );
 
     if (Object.keys(xrQualityPatch).length > 0) {
@@ -275,12 +294,14 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       pane.refresh();
     }
 
-    const pilotIntent = xrCameraRig.isPresenting()
+    const pilotIntent = isXrPresenting
       ? xrControllerRig.intent()
       : desktopPilotIntent.intent();
+    const isDesktopPilotActive =
+      !isXrPresenting && hasActiveSwarmPilotIntent(pilotIntent);
 
     if (
-      xrCameraRig.isPresenting() &&
+      isXrPresenting &&
       shouldPulseHaptics(pilotIntent, now, hapticsState)
     ) {
       pulseXrInputSources(
@@ -289,9 +310,14 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     }
 
     const pilot = swarmPilot.step({ dt, intent: pilotIntent });
+    const simulationPilot = activeSimulationPilot(
+      isXrPresenting,
+      isDesktopPilotActive,
+      pilot,
+    );
     const threatPosition = deriveThreatPosition(
       settings,
-      now / 1000,
+      time,
       pointerThreat,
     );
     const simulationBackend = selectSimulationBackend(
@@ -303,19 +329,30 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       settings,
       cameraRig.attractorScale(),
     );
+    const attractorCenter =
+      simulationPilot?.corePosition ?? flockWanderCenter(simulationSettings, time);
+    const radius = simulationPilot
+      ? Math.max(0.42, simulationPilot.radius)
+      : attractorContainmentRadius(simulationSettings);
+    const theme = themeByName(settings.theme);
     referenceGrid.update({
-      center: pilot.corePosition,
+      center: attractorCenter,
       settings,
       pixelRatio: rendererRig.pixelRatio(),
-      time: now / 1000,
+      time,
       wake: Math.min(
         1,
-        pilot.mediumPulse + Math.hypot(...pilot.coreVelocity) * 0.32,
+        (simulationPilot?.mediumPulse ?? 0) +
+          Math.hypot(...(simulationPilot?.coreVelocity ?? [0, 0, 0])) * 0.32,
       ),
+    });
+    attractorDebug.update({
+      settings,
+      center: attractorCenter,
+      radius,
     });
 
     if (simulationBackend === "webgpu" && webgpuLayer) {
-      const theme = themeByName(settings.theme);
       particles.points.visible = false;
       gpuParticles.points.visible = false;
       trails.lines.visible = false;
@@ -324,10 +361,10 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       webgpuLayer.render(
         {
           dt,
-          time: now / 1000,
+          time,
           settings: simulationSettings,
           threatPosition,
-          pilot,
+          pilot: simulationPilot,
         },
         cameraRig.camera,
         theme.ink,
@@ -342,10 +379,10 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       webgpuLayer?.setVisible(false);
       const gpuState = gpuSimulation.step({
         dt,
-        time: now / 1000,
+        time,
         settings: simulationSettings,
         threatPosition,
-        pilot,
+        pilot: simulationPilot,
       });
       gpuParticles.update(gpuState, settings, rendererRig.pixelRatio());
       gpuParticles.points.visible = true;
@@ -355,10 +392,10 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       webgpuLayer?.setVisible(false);
       const buffers = simulation.step({
         dt,
-        time: now / 1000,
+        time,
         settings: simulationSettings,
         threatPosition,
-        pilot,
+        pilot: simulationPilot,
       });
       trails.update(buffers, settings);
       particles.update(buffers, settings, rendererRig.pixelRatio());
@@ -369,7 +406,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     if (simulationBackend !== "webgpu") {
       accumulation.begin(
         rendererRig.renderer,
-        themeByName(settings.theme).paper,
+        theme.paper,
         settings,
       );
       rendererRig.renderer.render(rendererRig.scene, cameraRig.camera);
@@ -414,6 +451,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       gpuParticles.dispose();
       webgpuLayer?.dispose();
       trails.dispose();
+      attractorDebug.dispose();
       referenceGrid.dispose();
       accumulation.dispose();
       xrSessionButton.dispose();

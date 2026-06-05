@@ -1,4 +1,5 @@
 import {
+  hasActiveSwarmPilotIntent,
   neutralSwarmPilotIntent,
   readControllerIntent,
   type ControllerInputSourceLike,
@@ -19,6 +20,7 @@ const source = (
 describe("readControllerIntent", () => {
   it("returns neutral intent without controller sources", () => {
     expect(readControllerIntent([])).toEqual(neutralSwarmPilotIntent);
+    expect(hasActiveSwarmPilotIntent(neutralSwarmPilotIntent)).toBe(false);
   });
 
   it("maps right controller stick and buttons to thrust, yaw, gather, and pulse", () => {
@@ -33,6 +35,13 @@ describe("readControllerIntent", () => {
       gather: 0.8,
       mediumPulse: 0.42,
     });
+    expect(
+      hasActiveSwarmPilotIntent(
+        readControllerIntent([
+          source("right", [0, 0, 0.35, -0.7], [0.42, 0.8]),
+        ]),
+      ),
+    ).toBe(true);
   });
 
   it("maps left controller stick and grip to zoom, roll, and scatter", () => {
