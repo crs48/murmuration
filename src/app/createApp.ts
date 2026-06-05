@@ -30,6 +30,7 @@ import { ParticleCloud } from "../rendering/ParticleCloud";
 import { GpuParticleCloud } from "../rendering/GpuParticleCloud";
 import { WebgpuParticleLayer } from "../rendering/WebgpuParticleLayer";
 import { AttractorDebugOverlay } from "../rendering/AttractorDebugOverlay";
+import { ThreatDebugOverlay } from "../rendering/ThreatDebugOverlay";
 import { createRendererRig } from "../rendering/createRenderer";
 import { TrailLines } from "../rendering/TrailLines";
 import { AccumulationPass, isAccumulationEnabled } from "../rendering/accumulation";
@@ -115,6 +116,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   const trails = new TrailLines(settings);
   const referenceGrid = new ReferenceGrid(settings);
   const attractorDebug = new AttractorDebugOverlay();
+  const threatDebug = new ThreatDebugOverlay();
   const accumulation = new AccumulationPass();
   const stats = createFrameStatsTracker();
   const adaptiveQuality = createAdaptiveQualityState();
@@ -170,6 +172,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     particles.points,
     gpuParticles.points,
     attractorDebug.group,
+    threatDebug.group,
   );
   window.__murmuration = debugApi;
   if (capability.webgpuAvailable) {
@@ -351,6 +354,11 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       center: attractorCenter,
       radius,
     });
+    threatDebug.update({
+      settings,
+      position: threatPosition,
+      radius: simulationSettings.threatRadius,
+    });
 
     if (simulationBackend === "webgpu" && webgpuLayer) {
       particles.points.visible = false;
@@ -452,6 +460,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       webgpuLayer?.dispose();
       trails.dispose();
       attractorDebug.dispose();
+      threatDebug.dispose();
       referenceGrid.dispose();
       accumulation.dispose();
       xrSessionButton.dispose();

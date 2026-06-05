@@ -111,6 +111,7 @@ export const createPane = (
   });
   threat.addBinding(settings, "threatStrength", { min: 0, max: 1, step: 0.01 });
   threat.addBinding(settings, "threatRadius", { min: 0.05, max: 0.6, step: 0.01 });
+  threat.addBinding(settings, "threatDebug", { label: "debug" });
   threat.addBinding(settings, "waveGain", { min: 0, max: 2, step: 0.01 });
   threat.addBinding(settings, "vacuoleStrength", { min: 0, max: 2, step: 0.01 });
   threat.addBinding(settings, "splitGain", { min: 0, max: 1, step: 0.01 });
