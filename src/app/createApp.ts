@@ -96,7 +96,7 @@ const trackedCenterBlendAmount = (
   dt: number,
 ): number =>
   measuredCenter
-    ? Math.min(0.55, Math.max(0.18, dt * 10))
+    ? Math.min(0.78, Math.max(0.34, dt * 18))
     : Math.min(0.18, Math.max(0.02, dt * 1.4));
 
 export const createApp = (root: HTMLElement): MurmurationApp => {
@@ -425,7 +425,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
         threatVelocity,
         pilot: simulationPilot,
       });
-      if (centerSampleFrame % 4 === 0) {
+      if (centerSampleFrame % 2 === 0) {
         updateTrackedSwarmCenter(gpuSimulation.sampleCenter());
       }
       gpuParticles.update(gpuState, settings, rendererRig.pixelRatio());

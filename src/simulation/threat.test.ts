@@ -2,6 +2,7 @@ import { defaultSettings } from "../app/settings";
 import {
   initialThreatState,
   nextThreatState,
+  type ThreatState,
 } from "./threat";
 
 describe("nextThreatState", () => {
@@ -114,7 +115,48 @@ describe("nextThreatState", () => {
       state = result.state;
     }
 
-    expect(minimumCenterDistance).toBeLessThan(0.5);
-    expect(minimumHeadingContinuity).toBeGreaterThan(0.997);
+    expect(minimumCenterDistance).toBeLessThan(0.28);
+    expect(minimumHeadingContinuity).toBeGreaterThan(0.99);
+  });
+
+  it("keeps aiming at the center instead of committing to a wide pass", () => {
+    const settings = {
+      ...defaultSettings,
+      threatMode: "autonomous",
+      threatStrength: 1,
+      threatSpeed: 1.85,
+      threatAcceleration: 3.2,
+      threatMomentum: 0.74,
+    } as const;
+    let state: ThreatState = {
+      position: [1.6, 0.2, 0],
+      velocity: [0, 0, -1.1],
+      attackDirection: [0, 0, -1],
+      turnAxis: [0, 1, 0],
+      phase: "approach",
+    };
+    let minimumCenterDistance = Number.POSITIVE_INFINITY;
+    let enteredEgress = false;
+
+    for (let frame = 0; frame < 900; frame += 1) {
+      const result = nextThreatState(state, {
+        ...baseInput,
+        dt: 1 / 60,
+        time: frame / 60,
+        settings,
+        pointer: { active: false, position: [0, 0, 0] },
+      });
+      const position = result.position ?? state.position;
+
+      minimumCenterDistance = Math.min(
+        minimumCenterDistance,
+        Math.hypot(...position),
+      );
+      enteredEgress = enteredEgress || result.state.phase === "egress";
+      state = result.state;
+    }
+
+    expect(minimumCenterDistance).toBeLessThan(0.28);
+    expect(enteredEgress).toBe(true);
   });
 });

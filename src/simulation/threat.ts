@@ -15,11 +15,14 @@ export type PointerThreat = {
   position: Vec3;
 };
 
+export type ThreatPhase = "approach" | "egress";
+
 export type ThreatState = Readonly<{
   position: Vec3;
   velocity: Vec3;
   attackDirection: Vec3;
   turnAxis: Vec3;
+  phase: ThreatPhase;
 }>;
 
 export type ThreatStepInput = Readonly<{
@@ -51,6 +54,7 @@ export const initialThreatState = (): ThreatState => ({
   velocity: initialVelocity,
   attackDirection: normalize3(initialVelocity),
   turnAxis: normalize3([0.24, 0.96, -0.18]),
+  phase: "approach",
 });
 
 const dot3 = (a: Vec3, b: Vec3): number =>
@@ -126,10 +130,15 @@ const threatPassDistance = (
 ): number =>
   0.92 + settings.threatRadius * 2.6 + settings.threatMomentum * 1.32;
 
+const centerCaptureRadius = (
+  settings: Pick<MurmurationSettings, "threatRadius">,
+): number => Math.max(0.18, settings.threatRadius * 0.72);
+
 type PredatorCourse = Readonly<{
   target: Vec3;
   attackDirection: Vec3;
   turnAxis: Vec3;
+  phase: ThreatPhase;
 }>;
 
 const predatorCourse = (
@@ -151,32 +160,36 @@ const predatorCourse = (
     scale3(previousAttackDirection, -1),
   );
   const passThroughDistance = threatPassDistance(input.settings);
-  const centerOffset = sub3(state.position, input.swarmCenter);
-  const alongPass = dot3(centerOffset, previousAttackDirection);
-  const movingAlongPass = dot3(currentDirection, previousAttackDirection);
   const movingTowardCenter = dot3(currentDirection, centerDirection);
   const clearDistance =
     passThroughDistance * (0.72 + input.settings.threatMomentum * 0.16);
-  const hasClearedPass =
-    alongPass > clearDistance &&
-    movingAlongPass > 0.12 &&
-    distanceToCenter > input.settings.threatRadius * 1.45;
-  const isDriftingAway =
-    distanceToCenter > passThroughDistance * 0.48 && movingTowardCenter < -0.08;
+  const shouldEnterEgress =
+    state.phase === "approach" &&
+    distanceToCenter <= centerCaptureRadius(input.settings);
+  const shouldResumeApproach =
+    state.phase === "egress" &&
+    distanceToCenter > clearDistance &&
+    movingTowardCenter < -0.12;
+  const phase = shouldEnterEgress
+    ? "egress"
+    : shouldResumeApproach
+      ? "approach"
+      : state.phase;
   const desiredAttackDirection =
-    hasClearedPass || isDriftingAway
-      ? centerDirection
-      : previousAttackDirection;
+    phase === "approach" ? centerDirection : previousAttackDirection;
   const turnRate =
     input.settings.threatMode === "orbit"
       ? 0.42
       : 0.54 + input.settings.threatAcceleration * 0.025;
-  const attackDirection = rotateToward(
-    previousAttackDirection,
-    desiredAttackDirection,
-    dt * turnRate * (1 - input.settings.threatMomentum * 0.24),
-    previousTurnAxis,
-  );
+  const attackDirection =
+    shouldEnterEgress
+      ? currentDirection
+      : rotateToward(
+          previousAttackDirection,
+          desiredAttackDirection,
+          dt * turnRate * (1 - input.settings.threatMomentum * 0.24),
+          previousTurnAxis,
+        );
   const rawTurnAxis = unitOr(
     cross3(currentDirection, centerDirection),
     previousTurnAxis,
@@ -193,15 +206,22 @@ const predatorCourse = (
       : input.settings.threatRadius * 0.36;
   const slowLift = Math.sin(input.time * 0.18 + 0.7) * broadArc;
   const slowDrift = Math.cos(input.time * 0.13 + 1.4) * broadArc * 0.72;
-  const arcOffset = add3(scale3(turnAxis, slowLift), scale3(arcSide, slowDrift));
+  const arcOffset =
+    phase === "egress"
+      ? add3(scale3(turnAxis, slowLift), scale3(arcSide, slowDrift))
+      : ([0, 0, 0] as const);
 
   return {
-    target: add3(
-      add3(input.swarmCenter, scale3(attackDirection, passThroughDistance)),
-      arcOffset,
-    ),
+    target:
+      phase === "approach"
+        ? input.swarmCenter
+        : add3(
+            add3(input.swarmCenter, scale3(attackDirection, passThroughDistance)),
+            arcOffset,
+          ),
     attackDirection,
     turnAxis,
+    phase,
   };
 };
 
@@ -235,10 +255,14 @@ export const nextThreatState = (
     course.attackDirection,
   );
   const desiredVelocity = scale3(desiredDirection, input.settings.threatSpeed);
+  const steeringResponse =
+    course.phase === "approach"
+      ? 1.86 + (1 - input.settings.threatMomentum) * 0.48
+      : 0.34 + (1 - input.settings.threatMomentum) * 0.44;
   const maxVelocityChange =
     input.settings.threatAcceleration *
     dt *
-    (0.34 + (1 - input.settings.threatMomentum) * 0.44);
+    steeringResponse;
   const steering = limitLength3(
     sub3(desiredVelocity, state.velocity),
     maxVelocityChange,
@@ -246,7 +270,10 @@ export const nextThreatState = (
   const steeredVelocity = add3(state.velocity, steering);
   const speed = length3(steeredVelocity);
   const minimumCruiseSpeed =
-    input.settings.threatSpeed * (0.44 + input.settings.threatMomentum * 0.32);
+    input.settings.threatSpeed *
+    (course.phase === "approach"
+      ? 0.34 + input.settings.threatMomentum * 0.18
+      : 0.44 + input.settings.threatMomentum * 0.32);
   const currentDirection = unitOr(state.velocity, course.attackDirection);
   const cruiseDirection = rotateToward(
     currentDirection,
@@ -264,6 +291,7 @@ export const nextThreatState = (
     velocity,
     attackDirection: course.attackDirection,
     turnAxis: course.turnAxis,
+    phase: course.phase,
   };
 
   return {
