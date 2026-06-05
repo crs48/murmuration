@@ -67,4 +67,54 @@ describe("nextThreatState", () => {
     expect(first.position?.[2]).toBeLessThan(initialThreatState().position[2]);
     expect(Math.hypot(...(first.velocity ?? [0, 0, 0]))).toBeGreaterThan(0.5);
   });
+
+  it("keeps autonomous threat headings smooth while passing through the swarm", () => {
+    const settings = {
+      ...defaultSettings,
+      threatMode: "autonomous",
+      threatStrength: 1,
+      threatSpeed: 1.85,
+      threatAcceleration: 3.2,
+      threatMomentum: 0.74,
+    } as const;
+    let state = initialThreatState();
+    let previousDirection = state.velocity;
+    let minimumCenterDistance = Number.POSITIVE_INFINITY;
+    let minimumHeadingContinuity = 1;
+
+    for (let frame = 0; frame < 360; frame += 1) {
+      const result = nextThreatState(state, {
+        ...baseInput,
+        dt: 1 / 60,
+        time: frame / 60,
+        settings,
+        pointer: { active: false, position: [0, 0, 0] },
+      });
+      const position = result.position ?? state.position;
+      const velocity = result.velocity ?? state.velocity;
+      const speed = Math.hypot(...velocity);
+      const previousSpeed = Math.hypot(...previousDirection);
+      const headingContinuity =
+        speed > 0 && previousSpeed > 0
+          ? (velocity[0] * previousDirection[0] +
+              velocity[1] * previousDirection[1] +
+              velocity[2] * previousDirection[2]) /
+            (speed * previousSpeed)
+          : 1;
+
+      minimumCenterDistance = Math.min(
+        minimumCenterDistance,
+        Math.hypot(...position),
+      );
+      minimumHeadingContinuity = Math.min(
+        minimumHeadingContinuity,
+        headingContinuity,
+      );
+      previousDirection = velocity;
+      state = result.state;
+    }
+
+    expect(minimumCenterDistance).toBeLessThan(0.5);
+    expect(minimumHeadingContinuity).toBeGreaterThan(0.997);
+  });
 });
