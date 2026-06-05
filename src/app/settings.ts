@@ -79,7 +79,7 @@ export const defaultSettings: MurmurationSettings = {
   wanderSpeed: 1,
   threatMode: "autonomous",
   threatStrength: 0.72,
-  threatRadius: 0.34,
+  threatRadius: 0.48,
   threatSpeed: 1.85,
   threatAcceleration: 3.2,
   threatMomentum: 0.74,

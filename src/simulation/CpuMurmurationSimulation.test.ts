@@ -398,4 +398,58 @@ describe("CpuMurmurationSimulation", () => {
 
     expect(Math.abs(propagatedNeighborVelocity)).toBeGreaterThan(0.001);
   });
+
+  it("lets nearby particles briefly outrun the normal cap to dodge threats", () => {
+    const control = new CpuMurmurationSimulation({ seed: 22, initialCount: 4 });
+    const threatened = new CpuMurmurationSimulation({ seed: 22, initialCount: 4 });
+    const settings: MurmurationSettings = {
+      ...defaultSettings,
+      count: 4,
+      speed: 5,
+      minSpeed: 0,
+      maxSpeed: 0.5,
+      neighborRadius: 0.2,
+      neighborCount: 3,
+      separation: 0,
+      alignment: 0,
+      cohesion: 0,
+      inertia: 1,
+      noise: 0,
+      flow: 0,
+      threatMode: "autonomous",
+      threatStrength: 1,
+      threatRadius: 1,
+      waveGain: 2,
+      vacuoleStrength: 2,
+      splitGain: 0,
+    };
+
+    for (const simulation of [control, threatened]) {
+      const buffers = simulation.snapshot();
+
+      for (let index = 0; index < buffers.count; index += 1) {
+        writeBuffer3(buffers.positions, index, [0.1 + index * 0.6, 0, 0]);
+        writeBuffer3(buffers.previousPositions, index, [0.1 + index * 0.6, 0, 0]);
+        writeBuffer3(buffers.velocities, index, [0.45, 0, 0]);
+        buffers.speeds[index] = 0.45;
+      }
+    }
+
+    control.step({
+      dt: 1 / 20,
+      time: 1,
+      settings,
+      threatPosition: null,
+    });
+    threatened.step({
+      dt: 1 / 20,
+      time: 1,
+      settings,
+      threatPosition: [0, 0, 0],
+      threatVelocity: [1, 0, 0],
+    });
+
+    expect(control.snapshot().speeds[0]).toBeLessThanOrEqual(settings.maxSpeed);
+    expect(threatened.snapshot().speeds[0]).toBeGreaterThan(settings.maxSpeed);
+  });
 });

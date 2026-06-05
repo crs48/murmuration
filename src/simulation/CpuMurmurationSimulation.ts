@@ -42,6 +42,19 @@ const smoothstep = (edge0: number, edge1: number, value: number): number => {
   return t * t * (3 - 2 * t);
 };
 
+const threatPanicSpeedLimit = (
+  settings: Pick<
+    MurmurationSettings,
+    "maxSpeed" | "threatStrength" | "waveGain" | "vacuoleStrength"
+  >,
+  proximity: number,
+): number => {
+  const panic = clamp(0, 1, proximity) * settings.threatStrength;
+  const boost = panic * (0.72 + settings.waveGain * 0.18 + settings.vacuoleStrength * 0.12);
+
+  return settings.maxSpeed * (1 + Math.min(1.35, boost));
+};
+
 const leaderAnchor = (
   centerX: number,
   centerY: number,
@@ -492,14 +505,15 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
       const acceleratedY = vy + ay * dt * settings.speed;
       const acceleratedZ = vz + az * dt * settings.speed;
       const acceleratedSpeed = Math.hypot(acceleratedX, acceleratedY, acceleratedZ);
-      const clampedSpeed = clamp(minSpeed, settings.maxSpeed, acceleratedSpeed);
+      const localMaxSpeed = threatPanicSpeedLimit(settings, threatProximity);
+      const clampedSpeed = clamp(minSpeed, localMaxSpeed, acceleratedSpeed);
       const speedScale =
         acceleratedSpeed === 0 ? 1 : clampedSpeed / acceleratedSpeed;
       const inertialX = lerp(acceleratedX, acceleratedX * speedScale, settings.inertia);
       const inertialY = lerp(acceleratedY, acceleratedY * speedScale, settings.inertia);
       const inertialZ = lerp(acceleratedZ, acceleratedZ * speedScale, settings.inertia);
       const inertialSpeed = Math.hypot(inertialX, inertialY, inertialZ);
-      const finalSpeed = clamp(minSpeed, settings.maxSpeed, inertialSpeed);
+      const finalSpeed = clamp(minSpeed, localMaxSpeed, inertialSpeed);
       const finalScale = inertialSpeed === 0 ? 1 : finalSpeed / inertialSpeed;
       const finalVx = Number.isFinite(inertialX) ? inertialX * finalScale : vx;
       const finalVy = Number.isFinite(inertialY) ? inertialY * finalScale : vy;
@@ -895,6 +909,8 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
         az += localDirectionZ * expansion;
       }
 
+      let threatProximity = 0;
+
       if (input.threatPosition && settings.threatStrength > 0) {
         const awayX = px - input.threatPosition[0];
         const awayY = py - input.threatPosition[1];
@@ -902,8 +918,8 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
         const threatDistance = Math.hypot(awayX, awayY, awayZ);
 
         if (threatDistance > 0 && threatDistance < settings.threatRadius) {
-          const proximity = 1 - threatDistance / settings.threatRadius;
-          const broadProximity = Math.sqrt(proximity);
+          threatProximity = 1 - threatDistance / settings.threatRadius;
+          const broadProximity = Math.sqrt(threatProximity);
           const inverseThreatDistance = 1 / threatDistance;
           const push =
             settings.threatStrength *
@@ -944,14 +960,15 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
       const acceleratedY = vy + ay * dt * settings.speed;
       const acceleratedZ = vz + az * dt * settings.speed;
       const acceleratedSpeed = Math.hypot(acceleratedX, acceleratedY, acceleratedZ);
-      const clampedSpeed = clamp(minSpeed, settings.maxSpeed, acceleratedSpeed);
+      const localMaxSpeed = threatPanicSpeedLimit(settings, threatProximity);
+      const clampedSpeed = clamp(minSpeed, localMaxSpeed, acceleratedSpeed);
       const speedScale =
         acceleratedSpeed === 0 ? 1 : clampedSpeed / acceleratedSpeed;
       const inertialX = lerp(acceleratedX, acceleratedX * speedScale, settings.inertia);
       const inertialY = lerp(acceleratedY, acceleratedY * speedScale, settings.inertia);
       const inertialZ = lerp(acceleratedZ, acceleratedZ * speedScale, settings.inertia);
       const inertialSpeed = Math.hypot(inertialX, inertialY, inertialZ);
-      const finalSpeed = clamp(minSpeed, settings.maxSpeed, inertialSpeed);
+      const finalSpeed = clamp(minSpeed, localMaxSpeed, inertialSpeed);
       const finalScale = inertialSpeed === 0 ? 1 : finalSpeed / inertialSpeed;
       const finalVx = Number.isFinite(inertialX) ? inertialX * finalScale : vx;
       const finalVy = Number.isFinite(inertialY) ? inertialY * finalScale : vy;

@@ -338,13 +338,15 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
     acceleration += localDirection * (innerRadius - localDistance) * separation * 1.4;
   }
 
+  var threatProximity = 0.0;
+
   if (threatEnabled > 0.5 && threatStrength > 0.0) {
     let away = pos - u.threat.xyz;
     let threatDistance = length(away);
 
     if (threatDistance > 0.0 && threatDistance < threatRadius) {
-      let proximity = 1.0 - threatDistance / threatRadius;
-      let broadProximity = sqrt(proximity);
+      threatProximity = 1.0 - threatDistance / threatRadius;
+      let broadProximity = sqrt(threatProximity);
       let direction = away / threatDistance;
       let threatSpeed = length(threatVelocity);
       var threatDirection = vec3<f32>(0.0);
@@ -370,7 +372,12 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
 
   var nextVelocity = vel + acceleration * delta * speed;
   let velocityLength = length(nextVelocity);
-  let targetSpeed = clamp(velocityLength, minSpeed, maxSpeed);
+  let panicBoost =
+    clamp(threatProximity, 0.0, 1.0) *
+    threatStrength *
+    (0.72 + waveGain * 0.18 + vacuoleStrength * 0.12);
+  let localMaxSpeed = maxSpeed * (1.0 + min(1.35, panicBoost));
+  let targetSpeed = clamp(velocityLength, minSpeed, localMaxSpeed);
 
   if (velocityLength < 0.0001) {
     nextVelocity = vec3<f32>(targetSpeed, 0.0, 0.0);

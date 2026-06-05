@@ -326,13 +326,15 @@ void main() {
     acceleration += localDirection * (innerRadius - localDistance) * uSeparation * 1.4;
   }
 
+  float threatProximity = 0.0;
+
   if (uThreatEnabled > 0.5 && uThreatStrength > 0.0) {
     vec3 away = pos - uThreatPosition;
     float threatDistance = length(away);
 
     if (threatDistance > 0.0 && threatDistance < uThreatRadius) {
-      float proximity = 1.0 - threatDistance / uThreatRadius;
-      float broadProximity = sqrt(proximity);
+      threatProximity = 1.0 - threatDistance / uThreatRadius;
+      float broadProximity = sqrt(threatProximity);
       vec3 direction = away / threatDistance;
       float threatSpeed = length(uThreatVelocity);
       vec3 threatDirection =
@@ -354,7 +356,12 @@ void main() {
 
   vec3 nextVelocity = vel + acceleration * uDelta * uSpeed;
   float velocityLength = length(nextVelocity);
-  float targetSpeed = clamp(velocityLength, uMinSpeed, uMaxSpeed);
+  float panicBoost =
+    clamp(threatProximity, 0.0, 1.0) *
+    uThreatStrength *
+    (0.72 + uWaveGain * 0.18 + uVacuoleStrength * 0.12);
+  float localMaxSpeed = uMaxSpeed * (1.0 + min(1.35, panicBoost));
+  float targetSpeed = clamp(velocityLength, uMinSpeed, localMaxSpeed);
   nextVelocity = velocityLength == 0.0 ? vec3(targetSpeed, 0.0, 0.0) : nextVelocity * (targetSpeed / velocityLength);
 
   gl_FragColor = vec4(nextVelocity, 1.0);
