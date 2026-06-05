@@ -9,7 +9,7 @@ import type { SimulationStepInput } from "../simulation/types";
 
 const workgroupSize = 128;
 const particleStrideBytes = 16;
-const simUniformFloats = 28;
+const simUniformFloats = 32;
 const renderUniformFloats = 40;
 
 const velocityShader = `
@@ -21,6 +21,7 @@ struct SimUniforms {
   params3: vec4<f32>,
   params4: vec4<f32>,
   params5: vec4<f32>,
+  threatVelocity: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> u: SimUniforms;
@@ -184,6 +185,7 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
   let threatEnabled = u.params2.w;
   let threatStrength = u.threat.w;
   let threatRadius = u.params3.x;
+  let threatVelocity = u.threatVelocity.xyz;
   let waveGain = u.params3.y;
   let vacuoleStrength = u.params3.z;
   let splitGain = u.params3.w;
@@ -342,10 +344,24 @@ fn main(@builtin(global_invocation_id) globalId: vec3<u32>) {
 
     if (threatDistance > 0.0 && threatDistance < threatRadius) {
       let proximity = 1.0 - threatDistance / threatRadius;
+      let broadProximity = sqrt(proximity);
       let direction = away / threatDistance;
-      acceleration += direction * threatStrength * (1.1 + vacuoleStrength) * proximity;
-      acceleration += vec3<f32>(-direction.z, direction.y * 0.25, direction.x) * splitGain * proximity;
-      acceleration += vel * waveGain * proximity * 0.12;
+      let threatSpeed = length(threatVelocity);
+      var threatDirection = vec3<f32>(0.0);
+
+      if (threatSpeed > 0.0001) {
+        threatDirection = threatVelocity / threatSpeed;
+      }
+
+      let push = threatStrength * (2.5 + vacuoleStrength * 1.7) * broadProximity;
+      let wake = min(1.8, threatSpeed) * threatStrength * broadProximity * 0.42;
+      acceleration += direction * push;
+      acceleration += (direction - threatDirection * 0.35) * wake;
+      acceleration += vec3<f32>(-direction.z, direction.y * 0.28, direction.x) *
+        splitGain *
+        broadProximity *
+        1.45;
+      acceleration += vel * waveGain * broadProximity * 0.22;
     }
   }
 
@@ -879,6 +895,9 @@ export class WebgpuParticleLayer {
     this.simUniforms[22] = settings.chaseStrength;
     this.simUniforms[23] = settings.attractorSpeed;
     this.simUniforms[24] = settings.attractorRadius;
+    this.simUniforms[28] = input.threatVelocity?.[0] ?? 0;
+    this.simUniforms[29] = input.threatVelocity?.[1] ?? 0;
+    this.simUniforms[30] = input.threatVelocity?.[2] ?? 0;
     this.device.queue.writeBuffer(this.simUniformBuffer, 0, this.simUniforms);
   };
 

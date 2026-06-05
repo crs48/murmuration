@@ -268,6 +268,19 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
     const pilotRadius = pilot?.radius ?? 1;
     const coreFollow = pilot ? 0.22 : settings.chaseStrength * 0.16;
     const headingFollow = pilot ? 0.16 : settings.chaseStrength * 0.1;
+    const threatVelocityX = input.threatVelocity?.[0] ?? 0;
+    const threatVelocityY = input.threatVelocity?.[1] ?? 0;
+    const threatVelocityZ = input.threatVelocity?.[2] ?? 0;
+    const threatVelocitySpeed = Math.hypot(
+      threatVelocityX,
+      threatVelocityY,
+      threatVelocityZ,
+    );
+    const inverseThreatVelocitySpeed =
+      threatVelocitySpeed > 0.0001 ? 1 / threatVelocitySpeed : 0;
+    const threatDirectionX = threatVelocityX * inverseThreatVelocitySpeed;
+    const threatDirectionY = threatVelocityY * inverseThreatVelocitySpeed;
+    const threatDirectionZ = threatVelocityZ * inverseThreatVelocitySpeed;
 
     previousPositions.set(positions);
 
@@ -388,30 +401,35 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
 
         if (threatDistance > 0 && threatDistance < settings.threatRadius) {
           threatProximity = 1 - threatDistance / settings.threatRadius;
+          const broadProximity = Math.sqrt(threatProximity);
           const inverseThreatDistance = 1 / threatDistance;
+          const push =
+            settings.threatStrength *
+            (2.5 + settings.vacuoleStrength * 1.7) *
+            broadProximity;
+          const wake =
+            Math.min(1.8, threatVelocitySpeed) *
+            settings.threatStrength *
+            broadProximity *
+            0.42;
           threatX +=
-            awayX *
-            inverseThreatDistance *
-            settings.threatStrength *
-            (1.1 + settings.vacuoleStrength) *
-            threatProximity;
+            awayX * inverseThreatDistance * push +
+            (awayX * inverseThreatDistance - threatDirectionX * 0.35) * wake;
           threatY +=
-            awayY *
-            inverseThreatDistance *
-            settings.threatStrength *
-            (1.1 + settings.vacuoleStrength) *
-            threatProximity;
+            awayY * inverseThreatDistance * push +
+            (awayY * inverseThreatDistance - threatDirectionY * 0.35) * wake;
           threatZ +=
-            awayZ *
-            inverseThreatDistance *
-            settings.threatStrength *
-            (1.1 + settings.vacuoleStrength) *
-            threatProximity;
-          threatX += -awayZ * inverseThreatDistance * settings.splitGain * threatProximity;
-          threatZ += awayX * inverseThreatDistance * settings.splitGain * threatProximity;
-          threatX += vx * settings.waveGain * threatProximity * 0.12;
-          threatY += vy * settings.waveGain * threatProximity * 0.12;
-          threatZ += vz * settings.waveGain * threatProximity * 0.12;
+            awayZ * inverseThreatDistance * push +
+            (awayZ * inverseThreatDistance - threatDirectionZ * 0.35) * wake;
+          threatX +=
+            -awayZ * inverseThreatDistance * settings.splitGain * broadProximity * 1.45;
+          threatY +=
+            awayY * inverseThreatDistance * settings.splitGain * broadProximity * 0.28;
+          threatZ +=
+            awayX * inverseThreatDistance * settings.splitGain * broadProximity * 1.45;
+          threatX += vx * settings.waveGain * broadProximity * 0.22;
+          threatY += vy * settings.waveGain * broadProximity * 0.22;
+          threatZ += vz * settings.waveGain * broadProximity * 0.22;
         }
       }
 
@@ -522,6 +540,19 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
     const flockCenterY = pilot?.corePosition[1] ?? autoFlockCenter[1];
     const flockCenterZ = pilot?.corePosition[2] ?? autoFlockCenter[2];
     const pilotRadius = pilot?.radius ?? 1;
+    const threatVelocityX = input.threatVelocity?.[0] ?? 0;
+    const threatVelocityY = input.threatVelocity?.[1] ?? 0;
+    const threatVelocityZ = input.threatVelocity?.[2] ?? 0;
+    const threatVelocitySpeed = Math.hypot(
+      threatVelocityX,
+      threatVelocityY,
+      threatVelocityZ,
+    );
+    const inverseThreatVelocitySpeed =
+      threatVelocitySpeed > 0.0001 ? 1 / threatVelocitySpeed : 0;
+    const threatDirectionX = threatVelocityX * inverseThreatVelocitySpeed;
+    const threatDirectionY = threatVelocityY * inverseThreatVelocitySpeed;
+    const threatDirectionZ = threatVelocityZ * inverseThreatVelocitySpeed;
 
     previousPositions.set(positions);
 
@@ -872,19 +903,32 @@ export class CpuMurmurationSimulation implements SimulationAdapter {
 
         if (threatDistance > 0 && threatDistance < settings.threatRadius) {
           const proximity = 1 - threatDistance / settings.threatRadius;
+          const broadProximity = Math.sqrt(proximity);
           const inverseThreatDistance = 1 / threatDistance;
           const push =
             settings.threatStrength *
-            (1.1 + settings.vacuoleStrength) *
-            proximity;
-          ax += awayX * inverseThreatDistance * push;
-          ay += awayY * inverseThreatDistance * push;
-          az += awayZ * inverseThreatDistance * push;
-          ax += -awayZ * inverseThreatDistance * settings.splitGain * proximity;
-          az += awayX * inverseThreatDistance * settings.splitGain * proximity;
-          ax += vx * settings.waveGain * proximity * 0.12;
-          ay += vy * settings.waveGain * proximity * 0.12;
-          az += vz * settings.waveGain * proximity * 0.12;
+            (2.5 + settings.vacuoleStrength * 1.7) *
+            broadProximity;
+          const wake =
+            Math.min(1.8, threatVelocitySpeed) *
+            settings.threatStrength *
+            broadProximity *
+            0.42;
+          ax +=
+            awayX * inverseThreatDistance * push +
+            (awayX * inverseThreatDistance - threatDirectionX * 0.35) * wake;
+          ay +=
+            awayY * inverseThreatDistance * push +
+            (awayY * inverseThreatDistance - threatDirectionY * 0.35) * wake;
+          az +=
+            awayZ * inverseThreatDistance * push +
+            (awayZ * inverseThreatDistance - threatDirectionZ * 0.35) * wake;
+          ax += -awayZ * inverseThreatDistance * settings.splitGain * broadProximity * 1.45;
+          ay += awayY * inverseThreatDistance * settings.splitGain * broadProximity * 0.28;
+          az += awayX * inverseThreatDistance * settings.splitGain * broadProximity * 1.45;
+          ax += vx * settings.waveGain * broadProximity * 0.22;
+          ay += vy * settings.waveGain * broadProximity * 0.22;
+          az += vz * settings.waveGain * broadProximity * 0.22;
         }
       }
 

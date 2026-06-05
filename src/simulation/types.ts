@@ -15,6 +15,7 @@ export type SimulationStepInput = Readonly<{
   time: number;
   settings: MurmurationSettings;
   threatPosition: Vec3 | null;
+  threatVelocity?: Vec3 | null;
   pilot?: SimulationPilot | null;
 }>;
 

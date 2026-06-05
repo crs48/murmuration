@@ -62,6 +62,7 @@ uniform float uWanderRadius;
 uniform float uWanderSpeed;
 uniform float uThreatEnabled;
 uniform vec3 uThreatPosition;
+uniform vec3 uThreatVelocity;
 uniform float uThreatStrength;
 uniform float uThreatRadius;
 uniform float uWaveGain;
@@ -330,10 +331,20 @@ void main() {
 
     if (threatDistance > 0.0 && threatDistance < uThreatRadius) {
       float proximity = 1.0 - threatDistance / uThreatRadius;
+      float broadProximity = sqrt(proximity);
       vec3 direction = away / threatDistance;
-      acceleration += direction * uThreatStrength * (1.1 + uVacuoleStrength) * proximity;
-      acceleration += vec3(-direction.z, direction.y * 0.25, direction.x) * uSplitGain * proximity;
-      acceleration += vel * uWaveGain * proximity * 0.12;
+      float threatSpeed = length(uThreatVelocity);
+      vec3 threatDirection =
+        threatSpeed > 0.0001 ? uThreatVelocity / threatSpeed : vec3(0.0);
+      float push = uThreatStrength * (2.5 + uVacuoleStrength * 1.7) * broadProximity;
+      float wake = min(1.8, threatSpeed) * uThreatStrength * broadProximity * 0.42;
+      acceleration += direction * push;
+      acceleration += (direction - threatDirection * 0.35) * wake;
+      acceleration += vec3(-direction.z, direction.y * 0.28, direction.x) *
+        uSplitGain *
+        broadProximity *
+        1.45;
+      acceleration += vel * uWaveGain * broadProximity * 0.22;
     }
   }
 
@@ -421,6 +432,7 @@ export class WebglGpuMurmurationSimulation {
       uWanderSpeed: { value: 0 },
       uThreatEnabled: { value: 0 },
       uThreatPosition: { value: [0, 0, 0] },
+      uThreatVelocity: { value: [0, 0, 0] },
       uThreatStrength: { value: 0 },
       uThreatRadius: { value: 0 },
       uWaveGain: { value: 0 },
@@ -568,6 +580,7 @@ export class WebglGpuMurmurationSimulation {
     this.velocityMaterial.uniforms.uWanderSpeed.value = input.settings.wanderSpeed;
     this.velocityMaterial.uniforms.uThreatEnabled.value = input.threatPosition ? 1 : 0;
     this.velocityMaterial.uniforms.uThreatPosition.value = input.threatPosition ?? [0, 0, 0];
+    this.velocityMaterial.uniforms.uThreatVelocity.value = input.threatVelocity ?? [0, 0, 0];
     this.velocityMaterial.uniforms.uThreatStrength.value = input.settings.threatStrength;
     this.velocityMaterial.uniforms.uThreatRadius.value = input.settings.threatRadius;
     this.velocityMaterial.uniforms.uWaveGain.value = input.settings.waveGain;

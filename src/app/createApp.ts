@@ -38,7 +38,8 @@ import { themeByName } from "../rendering/themes";
 import { flockWanderCenter } from "../simulation/flockWander";
 import type { SimulationPilot } from "../simulation/types";
 import {
-  deriveThreatPosition,
+  initialThreatState,
+  nextThreatState,
   type PointerThreat,
 } from "../simulation/threat";
 import { createXrControllerRig } from "../xr/createXrControllerRig";
@@ -132,6 +133,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   const desktopPilotIntent = createDesktopPilotIntent(window);
   const swarmPilot = createSwarmPilotRig();
   const hapticsState = createXrHapticsState();
+  let threatState = initialThreatState();
   const pointerThreat: PointerThreat = {
     active: false,
     position: [0, 0, 0],
@@ -318,11 +320,6 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       isDesktopPilotActive,
       pilot,
     );
-    const threatPosition = deriveThreatPosition(
-      settings,
-      time,
-      pointerThreat,
-    );
     const simulationBackend = selectSimulationBackend(
       settings,
       capability,
@@ -337,6 +334,16 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     const radius = simulationPilot
       ? Math.max(0.42, simulationPilot.radius)
       : attractorContainmentRadius(simulationSettings);
+    const threat = nextThreatState(threatState, {
+      dt,
+      time,
+      settings: simulationSettings,
+      pointer: pointerThreat,
+      swarmCenter: attractorCenter,
+    });
+    threatState = threat.state;
+    const threatPosition = threat.position;
+    const threatVelocity = threat.velocity;
     const theme = themeByName(settings.theme);
     referenceGrid.update({
       center: attractorCenter,
@@ -357,6 +364,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     threatDebug.update({
       settings,
       position: threatPosition,
+      velocity: threatVelocity,
       radius: simulationSettings.threatRadius,
     });
 
@@ -372,6 +380,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
           time,
           settings: simulationSettings,
           threatPosition,
+          threatVelocity,
           pilot: simulationPilot,
         },
         cameraRig.camera,
@@ -390,6 +399,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
         time,
         settings: simulationSettings,
         threatPosition,
+        threatVelocity,
         pilot: simulationPilot,
       });
       gpuParticles.update(gpuState, settings, rendererRig.pixelRatio());
@@ -403,6 +413,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
         time,
         settings: simulationSettings,
         threatPosition,
+        threatVelocity,
         pilot: simulationPilot,
       });
       trails.update(buffers, settings);

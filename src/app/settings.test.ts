@@ -27,6 +27,9 @@ describe("settings", () => {
       particleOpacity: 9,
       depthScale: 9,
       threatDebug: true,
+      threatSpeed: 99,
+      threatAcceleration: -1,
+      threatMomentum: 99,
       wanderRadius: 8,
       wanderSpeed: 0,
       pixelRatioCap: 8,
@@ -43,6 +46,9 @@ describe("settings", () => {
     expect(clamped.particleOpacity).toBe(1);
     expect(clamped.depthScale).toBe(2);
     expect(clamped.threatDebug).toBe(true);
+    expect(clamped.threatSpeed).toBe(5);
+    expect(clamped.threatAcceleration).toBe(0.1);
+    expect(clamped.threatMomentum).toBe(0.96);
     expect(clamped.wanderRadius).toBe(1);
     expect(clamped.wanderSpeed).toBe(0.05);
     expect(clamped.pixelRatioCap).toBe(2);

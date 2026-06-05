@@ -27,6 +27,9 @@ export type MurmurationSettings = Readonly<{
   threatMode: ThreatMode;
   threatStrength: number;
   threatRadius: number;
+  threatSpeed: number;
+  threatAcceleration: number;
+  threatMomentum: number;
   threatDebug: boolean;
   waveGain: number;
   vacuoleStrength: number;
@@ -77,6 +80,9 @@ export const defaultSettings: MurmurationSettings = {
   threatMode: "off",
   threatStrength: 0,
   threatRadius: 0.18,
+  threatSpeed: 1.85,
+  threatAcceleration: 3.2,
+  threatMomentum: 0.74,
   threatDebug: false,
   waveGain: 0.2,
   vacuoleStrength: 0,
@@ -157,6 +163,9 @@ export const clampSettings = (
   wanderSpeed: Math.min(2, Math.max(0.05, settings.wanderSpeed)),
   threatStrength: Math.min(1, Math.max(0, settings.threatStrength)),
   threatRadius: Math.min(0.6, Math.max(0.05, settings.threatRadius)),
+  threatSpeed: Math.min(5, Math.max(0.1, settings.threatSpeed)),
+  threatAcceleration: Math.min(10, Math.max(0.1, settings.threatAcceleration)),
+  threatMomentum: Math.min(0.96, Math.max(0, settings.threatMomentum)),
   threatDebug: Boolean(settings.threatDebug),
   waveGain: Math.min(2, Math.max(0, settings.waveGain)),
   vacuoleStrength: Math.min(2, Math.max(0, settings.vacuoleStrength)),
