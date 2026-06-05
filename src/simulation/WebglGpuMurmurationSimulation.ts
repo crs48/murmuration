@@ -16,6 +16,7 @@ import {
 import type { MurmurationSettings } from "../app/settings";
 import { particleTexturePlan } from "../app/settings";
 import { mulberry32 } from "../math/random";
+import { isFinite3, type Vec3 } from "../math/vec3";
 import {
   initialParticlePosition,
   initialParticleVelocity,
@@ -478,6 +479,12 @@ export class WebglGpuMurmurationSimulation {
 
   private velocityTargets: [WebGLRenderTarget, WebGLRenderTarget] | null = null;
 
+  private positionReadTarget: WebGLRenderTarget | null = null;
+
+  private centerReadback = new Float32Array(0);
+
+  private centerReadbackFailed = false;
+
   private writeIndex = 0;
 
   public constructor(private readonly renderer: WebGLRenderer) {
@@ -494,6 +501,7 @@ export class WebglGpuMurmurationSimulation {
     const plan = particleTexturePlan(count);
     this.count = count;
     this.textureSide = plan.textureSide;
+    this.centerReadbackFailed = false;
     const random = mulberry32(71);
     const positionData = new Float32Array(plan.capacity * 4);
     const velocityData = new Float32Array(plan.capacity * 4);
@@ -605,6 +613,7 @@ export class WebglGpuMurmurationSimulation {
 
     this.positionSource = positionTarget.texture;
     this.velocitySource = velocityTarget.texture;
+    this.positionReadTarget = positionTarget;
     this.writeIndex = 1 - this.writeIndex;
 
     return {
@@ -613,6 +622,52 @@ export class WebglGpuMurmurationSimulation {
       textureSide: this.textureSide,
       count: this.count,
     };
+  };
+
+  public sampleCenter = (): Vec3 | null => {
+    if (
+      !this.positionReadTarget ||
+      this.centerReadbackFailed ||
+      this.count <= 0 ||
+      this.textureSide <= 0
+    ) {
+      return null;
+    }
+
+    const requiredLength = this.textureSide * this.textureSide * 4;
+
+    if (this.centerReadback.length !== requiredLength) {
+      this.centerReadback = new Float32Array(requiredLength);
+    }
+
+    try {
+      this.renderer.readRenderTargetPixels(
+        this.positionReadTarget,
+        0,
+        0,
+        this.textureSide,
+        this.textureSide,
+        this.centerReadback,
+      );
+    } catch {
+      this.centerReadbackFailed = true;
+      return null;
+    }
+
+    let x = 0;
+    let y = 0;
+    let z = 0;
+
+    for (let index = 0; index < this.count; index += 1) {
+      const offset = index * 4;
+      x += this.centerReadback[offset];
+      y += this.centerReadback[offset + 1];
+      z += this.centerReadback[offset + 2];
+    }
+
+    const center: Vec3 = [x / this.count, y / this.count, z / this.count];
+
+    return isFinite3(center) ? center : null;
   };
 
   public dispose = (): void => {
@@ -633,6 +688,7 @@ export class WebglGpuMurmurationSimulation {
     this.velocityTargets?.forEach((target) => target.dispose());
     this.positionTargets = null;
     this.velocityTargets = null;
+    this.positionReadTarget = null;
 
     if (this.positionSource && !targetTextures.has(this.positionSource)) {
       this.positionSource.dispose();

@@ -42,6 +42,8 @@ import {
   nextThreatState,
   type PointerThreat,
 } from "../simulation/threat";
+import { blendSwarmCenter, particleCentroid } from "../simulation/swarmCenter";
+import type { Vec3 } from "../math/vec3";
 import { createXrControllerRig } from "../xr/createXrControllerRig";
 import { createXrCameraRig } from "../xr/createXrCameraRig";
 import { createDesktopPilotIntent } from "../xr/desktopPilotIntent";
@@ -89,6 +91,14 @@ const activeSimulationPilot = (
 ): SimulationPilot | null =>
   isXrPresenting || isDesktopPilotActive ? pilot : null;
 
+const trackedCenterBlendAmount = (
+  measuredCenter: Vec3 | null,
+  dt: number,
+): number =>
+  measuredCenter
+    ? Math.min(0.55, Math.max(0.18, dt * 10))
+    : Math.min(0.18, Math.max(0.02, dt * 1.4));
+
 export const createApp = (root: HTMLElement): MurmurationApp => {
   const settings = cloneSettings();
   const host = createElement("section", "murmuration-app");
@@ -134,6 +144,8 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
   const swarmPilot = createSwarmPilotRig();
   const hapticsState = createXrHapticsState();
   let threatState = initialThreatState();
+  let trackedSwarmCenter: Vec3 | null = null;
+  let centerSampleFrame = 0;
   const pointerThreat: PointerThreat = {
     active: false,
     position: [0, 0, 0],
@@ -334,12 +346,22 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
     const radius = simulationPilot
       ? Math.max(0.42, simulationPilot.radius)
       : attractorContainmentRadius(simulationSettings);
+    const threatTargetCenter =
+      simulationPilot?.corePosition ?? trackedSwarmCenter ?? attractorCenter;
+    const updateTrackedSwarmCenter = (measuredCenter: Vec3 | null): void => {
+      const fallbackCenter = simulationPilot?.corePosition ?? attractorCenter;
+      trackedSwarmCenter = blendSwarmCenter(
+        trackedSwarmCenter,
+        measuredCenter ?? fallbackCenter,
+        trackedCenterBlendAmount(measuredCenter, dt),
+      );
+    };
     const threat = nextThreatState(threatState, {
       dt,
       time,
       settings: simulationSettings,
       pointer: pointerThreat,
-      swarmCenter: attractorCenter,
+      swarmCenter: threatTargetCenter,
     });
     threatState = threat.state;
     const threatPosition = threat.position;
@@ -373,6 +395,7 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
       gpuParticles.points.visible = false;
       trails.lines.visible = false;
       webgpuLayer.setVisible(true);
+      updateTrackedSwarmCenter(null);
       rendererRig.renderer.render(rendererRig.scene, cameraRig.camera);
       webgpuLayer.render(
         {
@@ -402,6 +425,9 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
         threatVelocity,
         pilot: simulationPilot,
       });
+      if (centerSampleFrame % 4 === 0) {
+        updateTrackedSwarmCenter(gpuSimulation.sampleCenter());
+      }
       gpuParticles.update(gpuState, settings, rendererRig.pixelRatio());
       gpuParticles.points.visible = true;
       particles.points.visible = false;
@@ -416,11 +442,13 @@ export const createApp = (root: HTMLElement): MurmurationApp => {
         threatVelocity,
         pilot: simulationPilot,
       });
+      updateTrackedSwarmCenter(particleCentroid(buffers));
       trails.update(buffers, settings);
       particles.update(buffers, settings, rendererRig.pixelRatio());
       particles.points.visible = true;
       gpuParticles.points.visible = false;
     }
+    centerSampleFrame += 1;
 
     if (simulationBackend !== "webgpu") {
       accumulation.begin(
