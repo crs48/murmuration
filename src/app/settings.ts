@@ -72,7 +72,7 @@ export const defaultSettings: MurmurationSettings = {
   inertia: 0.84,
   noise: 0.012,
   flow: 0.2,
-  chaseStrength: 0.82,
+  chaseStrength: 0.44,
   attractorSpeed: 0.92,
   attractorRadius: 1.18,
   attractorDebug: false,
