@@ -92,7 +92,7 @@ export const createPane = (
   visual.addBinding(settings, "trailMode", {
     options: {
       Velocity: "velocity",
-      Accumulation: "accumulation",
+      History: "accumulation",
       Off: "off",
     },
   });
