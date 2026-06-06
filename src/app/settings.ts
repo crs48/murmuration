@@ -60,7 +60,7 @@ export type MurmurationSettings = Readonly<{
 }>;
 
 export const defaultSettings: MurmurationSettings = {
-  count: 16000,
+  count: 11111,
   speed: 0.52,
   minSpeed: 0.03,
   maxSpeed: 1.12,
