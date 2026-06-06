@@ -17,6 +17,7 @@ export const createRendererRig = (
   const renderer = new WebGLRenderer({
     antialias: true,
     powerPreference: "high-performance",
+    preserveDrawingBuffer: true,
   });
   const scene = new Scene();
 
