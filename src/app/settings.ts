@@ -99,7 +99,7 @@ export const defaultSettings: MurmurationSettings = {
   mediumTurbulence: 0.25,
   mediumWake: 0.5,
   mediumPointScale: 1,
-  trailLength: 4.8,
+  trailLength: 0.01,
   trailOpacity: 0.72,
   trailWaviness: 0.68,
   theme: "ink",
