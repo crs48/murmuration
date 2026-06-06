@@ -24,6 +24,7 @@ describe("settings", () => {
       attractorSpeed: 9,
       attractorRadius: 9,
       attractorDebug: true,
+      particleScale: -1,
       particleOpacity: 9,
       depthScale: 9,
       trailLength: 99,
@@ -45,6 +46,7 @@ describe("settings", () => {
     expect(clamped.attractorSpeed).toBe(3);
     expect(clamped.attractorRadius).toBe(2.4);
     expect(clamped.attractorDebug).toBe(true);
+    expect(clamped.particleScale).toBe(0.1);
     expect(clamped.particleOpacity).toBe(1);
     expect(clamped.depthScale).toBe(2);
     expect(clamped.trailLength).toBe(5);
