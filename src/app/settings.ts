@@ -95,7 +95,7 @@ export const defaultSettings: MurmurationSettings = {
   depthFade: 0.42,
   trailMode: "accumulation",
   mediumMode: "grid",
-  mediumIntensity: 1,
+  mediumIntensity: 0.12,
   mediumTurbulence: 0.25,
   mediumWake: 0.5,
   mediumPointScale: 1,
